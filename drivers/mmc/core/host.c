@@ -372,6 +372,11 @@ again:
 
 	dev_set_name(&host->class_dev, "mmc%d", host->index);
 
+#ifdef VENDOR_EDIT
+//yh@bsp, 2015-10-21 Add for special card compatible
+	host->card_stuck_in_programing_status = false;
+#endif /* VENDOR_EDIT */
+
 	host->parent = dev;
 	host->class_dev.parent = dev;
 	host->class_dev.class = &mmc_host_class;
@@ -400,14 +405,11 @@ again:
 	host->max_blk_count = PAGE_SIZE / 512;
 
 #ifdef CONFIG_MTK_EMMC_CQ_SUPPORT
-	host->align_size = 4;
-
 	for (i = 0; i < EMMC_MAX_QUEUE_DEPTH; i++)
 		host->areq_que[i] = NULL;
 	atomic_set(&host->areq_cnt, 0);
 	host->areq_cur = NULL;
 	host->done_mrq = NULL;
-	host->state = 0;
 
 	INIT_LIST_HEAD(&host->cmd_que);
 	INIT_LIST_HEAD(&host->dat_que);
