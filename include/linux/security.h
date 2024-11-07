@@ -1,5 +1,5 @@
 /*
- * Linux Security plug
+* Linux Security plug
  *
  * Copyright (C) 2001 WireX Communications, Inc <chris@wirex.com>
  * Copyright (C) 2001 Greg Kroah-Hartman <greg@kroah.com>
@@ -1732,6 +1732,4 @@ static inline char *alloc_secdata(void)
 static inline void free_secdata(void *secdata)
 { }
 #endif /* CONFIG_SECURITY */
-
 #endif /* ! __LINUX_SECURITY_H */
-
