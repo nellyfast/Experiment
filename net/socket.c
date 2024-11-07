@@ -399,6 +399,12 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
 	struct qstr name = { .name = "" };
 	struct path path;
 	struct file *file;
+#ifdef VENDOR_EDIT
+//Jiemin.Zhu@PSW.Android.OppoFeature.TrafficMonitor, 2018/06/28, Add for net comsuption statistics for
+//process which use the same uid
+	struct pid *pid;
+	struct task_struct *task;
+#endif /* VENDOR_EDIT */
 
 	if (dname) {
 		name.name = dname;
@@ -426,6 +432,20 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
 	sock->file = file;
 	file->f_flags = O_RDWR | (flags & O_NONBLOCK);
 	file->private_data = sock;
+
+#ifdef VENDOR_EDIT
+//Jiemin.Zhu@PSW.Android.OppoFeature.TrafficMonitor, 2018/06/28, Add for net comsuption statistics for
+//process which use the same uid
+	pid = find_get_pid(current->tgid);
+	if (pid) {
+		task = get_pid_task(pid, PIDTYPE_PID);
+		if (task && sock->sk) {
+			strncpy(sock->sk->sk_cmdline, task->comm, TASK_COMM_LEN);
+		}
+		put_task_struct(task);
+	}
+	put_pid(pid);
+#endif /* VENDOR_EDIT */
 	return file;
 }
 EXPORT_SYMBOL(sock_alloc_file);
@@ -540,7 +560,10 @@ static int sockfs_setattr(struct dentry *dentry, struct iattr *iattr)
 	if (!err && (iattr->ia_valid & ATTR_UID)) {
 		struct socket *sock = SOCKET_I(d_inode(dentry));
 
-		sock->sk->sk_uid = iattr->ia_uid;
+		if (sock->sk)
+			sock->sk->sk_uid = iattr->ia_uid;
+		else
+			err = -ENOENT;
 	}
 
 	return err;
@@ -591,12 +614,16 @@ EXPORT_SYMBOL(sock_alloc);
  *	an inode not a file.
  */
 
-void sock_release(struct socket *sock)
+static void __sock_release(struct socket *sock, struct inode *inode)
 {
 	if (sock->ops) {
 		struct module *owner = sock->ops->owner;
 
+		if (inode)
+			inode_lock(inode);
 		sock->ops->release(sock);
+		if (inode)
+			inode_unlock(inode);
 		sock->ops = NULL;
 		module_put(owner);
 	}
@@ -610,6 +637,11 @@ void sock_release(struct socket *sock)
 		return;
 	}
 	sock->file = NULL;
+}
+
+void sock_release(struct socket *sock)
+{
+	__sock_release(sock, NULL);
 }
 EXPORT_SYMBOL(sock_release);
 
@@ -1043,7 +1075,7 @@ static int sock_mmap(struct file *file, struct vm_area_struct *vma)
 
 static int sock_close(struct inode *inode, struct file *filp)
 {
-	sock_release(SOCKET_I(inode));
+	__sock_release(SOCKET_I(inode), inode);
 	return 0;
 }
 
@@ -1981,6 +2013,7 @@ static int ___sys_sendmsg(struct socket *sock, struct user_msghdr __user *msg,
 out_freectl:
 	if (ctl_buf != ctl)
 		sock_kfree_s(sock->sk, ctl_buf, ctl_len);
+		
 out_freeiov:
 	kfree(iov);
 	return err;
