@@ -26,11 +26,7 @@ struct log_rb {
 	volatile char data[0];
 } __packed;
 
-#define SMC_SC_SHARED_LOG_VERSION SMC_STDCALL_NR(SMC_ENTITY_LOGGING, 0)
-#define SMC_SC_SHARED_LOG_ADD SMC_STDCALL_NR(SMC_ENTITY_LOGGING, 1)
-#define SMC_SC_SHARED_LOG_RM SMC_STDCALL_NR(SMC_ENTITY_LOGGING, 2)
-
 #define TRUSTY_LOG_API_VERSION 1
-void get_gz_log_buffer(unsigned long *addr, unsigned long *size,
-		       unsigned long *start);
+void get_gz_log_buffer(unsigned long *addr, unsigned long *paddr,
+		       unsigned long *size, unsigned long *start);
 #endif

@@ -33,6 +33,10 @@
 #include <linux/of_irq.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
+#ifdef VENDOR_EDIT
+/* Jianchao.Shi@BSP.CHG.Basic, 2019/06/24, sjc Add for I2C5(high speed mode) duty ratio */
+#include <soc/oppo/oppo_project.h>
+#endif
 
 #if 0
 #include <mtk_cpufreq_hybrid.h>
@@ -590,14 +594,31 @@ static int i2c_set_speed(struct mt_i2c *i2c, unsigned int clk_src_in_hz)
 		if (ret < 0)
 			return ret;
 
-		i2c->high_speed_reg = I2C_TIME_DEFAULT_VALUE |
+#ifndef VENDOR_EDIT
+/* Jianchao.Shi@BSP.CHG.Basic, 2019/06/24, sjc Modify for I2C5(high speed mode) duty ratio */
+		i2c->high_speed_reg = I2C_TIME_DEFAULT_VALUE | I2C_HS_SPEED |
 			(sample_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 12 |
 			(step_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 8;
+#else
+	//	if (!is_project(OPPO_18073) && !is_project(OPPO_18593)) {
+                if (0) {
+			i2c->high_speed_reg = I2C_TIME_DEFAULT_VALUE | I2C_HS_SPEED |
+				I2C_HS_HOLD_TIME |
+				(sample_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 12 |
+				((step_cnt - 1) & I2C_TIMING_SAMPLE_COUNT_MASK) << 8;
+		} else {
+			i2c->high_speed_reg = I2C_TIME_DEFAULT_VALUE | I2C_HS_SPEED |
+				(sample_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 12 |
+				(step_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 8;
+		}
+#endif /*VENDOR_EDIT*/
 
 		i2c->timing_reg =
 			(l_sample_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 8 |
 			(l_step_cnt & I2C_TIMING_STEP_DIV_MASK) << 0;
 
+#ifndef VENDOR_EDIT
+/* Jianchao.Shi@BSP.CHG.Basic, 2019/06/24, sjc Modify for I2C5(high speed mode) duty ratio */
 		if (i2c->dev_comp->set_ltiming) {
 			i2c->ltiming_reg = (l_sample_cnt << 6) |
 				(l_step_cnt << 0) |
@@ -605,6 +626,26 @@ static int i2c_set_speed(struct mt_i2c *i2c, unsigned int clk_src_in_hz)
 					I2C_TIMING_SAMPLE_COUNT_MASK) << 12 |
 				(step_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 9;
 		}
+#else
+		//if (!is_project(OPPO_18073) && !is_project(OPPO_18593)) {
+		if (0) {
+			if (i2c->dev_comp->set_ltiming) {
+				i2c->ltiming_reg = I2C_HS_HOLD_SEL | (l_sample_cnt << 6) |
+					(l_step_cnt << 0) |
+					(sample_cnt &
+						I2C_TIMING_SAMPLE_COUNT_MASK) << 12 |
+					((step_cnt + 1) & I2C_TIMING_SAMPLE_COUNT_MASK) << 9;
+			}
+		} else {
+			if (i2c->dev_comp->set_ltiming) {
+				i2c->ltiming_reg = (l_sample_cnt << 6) |
+					(l_step_cnt << 0) |
+					(sample_cnt &
+						I2C_TIMING_SAMPLE_COUNT_MASK) << 12 |
+					(step_cnt & I2C_TIMING_SAMPLE_COUNT_MASK) << 9;
+			}
+		}
+#endif /*VENDOR_EDIT*/
 	} else {
 		if (speed_hz > I2C_DEFAUT_SPEED
 			&& speed_hz <= MAX_FS_MODE_SPEED
@@ -707,7 +748,8 @@ void i2c_dump_info(struct mt_i2c *i2c)
 	       I2CTAG "DELAY_LEN=0x%x,TIMING=0x%x,LTIMING=0x%x,START=0x%x\n"
 	       I2CTAG "FIFO_STAT=0x%x,IO_CONFIG=0x%x,HS=0x%x\n"
 	       I2CTAG "DCM_EN=0x%x,DEBUGSTAT=0x%x,EXT_CONF=0x%x\n"
-	       I2CTAG "TRANSFER_LEN_AUX=0x%x\n",
+	       I2CTAG "TRANSFER_LEN_AUX=0x%x,OFFSET_DMA_FSM_DEBUG=0x%x\n"
+	       I2CTAG "OFFSET_MCU_INTR=0x%x\n",
 	       (i2c_readw(i2c, OFFSET_SLAVE_ADDR)),
 	       (i2c_readw(i2c, OFFSET_INTR_MASK)),
 	       (i2c_readw(i2c, OFFSET_INTR_STAT)),
@@ -724,7 +766,9 @@ void i2c_dump_info(struct mt_i2c *i2c)
 	       (i2c_readw(i2c, OFFSET_DCM_EN)),
 	       (i2c_readw(i2c, OFFSET_DEBUGSTAT)),
 	       (i2c_readw(i2c, OFFSET_EXT_CONF)),
-	       (i2c_readw(i2c, OFFSET_TRANSFER_LEN_AUX)));
+	       (i2c_readw(i2c, OFFSET_TRANSFER_LEN_AUX)),
+	       (i2c_readw(i2c, OFFSET_DMA_FSM_DEBUG)),
+	       (i2c_readw(i2c, OFFSET_MCU_INTR)));
 
 	pr_info_ratelimited("before enable DMA register(0x%lx):\n"
 	       I2CTAG "INT_FLAG=0x%x,INT_EN=0x%x,EN=0x%x,RST=0x%x,\n"
@@ -779,7 +823,8 @@ void i2c_dump_info(struct mt_i2c *i2c)
 		I2CTAG "TRANSFER_LEN=0x%x, TRANSAC_LEN=0x%x,DELAY_LEN=0x%x\n"
 		I2CTAG "TIMING=0x%x,LTIMING=0x%x,START=0x%x,FIFO_STAT=0x%x,\n"
 		I2CTAG "IO_CONFIG=0x%x,HS=0x%x,DCM_EN=0x%x,DEBUGSTAT=0x%x,\n"
-		I2CTAG "EXT_CONF=0x%x,TRANSFER_LEN_AUX=0x%x\n",
+		I2CTAG "EXT_CONF=0x%x,TRANSFER_LEN_AUX=0x%x\n"
+		I2CTAG "OFFSET_DMA_FSM_DEBUG=0x%x,OFFSET_MCU_INTR=0x%x\n",
 		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_SLAVE_ADDR)),
 		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_INTR_MASK)),
 		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_INTR_STAT)),
@@ -796,7 +841,9 @@ void i2c_dump_info(struct mt_i2c *i2c)
 		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_DCM_EN)),
 		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_DEBUGSTAT)),
 		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_EXT_CONF)),
-		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_TRANSFER_LEN_AUX)));
+		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_TRANSFER_LEN_AUX)),
+		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_DMA_FSM_DEBUG)),
+		(raw_i2c_readw(i2c, i2c->ccu_offset, OFFSET_MCU_INTR)));
 	}
 }
 #else
@@ -804,6 +851,20 @@ void i2c_dump_info(struct mt_i2c *i2c)
 {
 }
 #endif
+
+void i2c_gpio_dump_info(struct mt_i2c *i2c)
+{
+	if (i2c->gpiobase) {
+		dev_info(i2c->dev, "%s +++++++++++++++++++\n", __func__);
+		gpio_dump_regs_range(i2c->scl_gpio_id, i2c->sda_gpio_id);
+		dev_info(i2c->dev, "I2C gpio structure:\n"
+		       I2CTAG "EH_CFG=0x%x,PU_CFG=0x%x,RSEL_CFG=0x%x\n",
+		       readl(i2c->gpiobase + i2c->offset_eh_cfg),
+		       readl(i2c->gpiobase + i2c->offset_pu_cfg),
+		       readl(i2c->gpiobase + i2c->offset_rsel_cfg));
+	} else
+		dev_info(i2c->dev, "i2c gpiobase is NULL\n");
+}
 
 void dump_i2c_status(int id)
 {
@@ -824,6 +885,85 @@ void dump_i2c_status(int id)
 }
 EXPORT_SYMBOL(dump_i2c_status);
 
+#ifdef VENDOR_EDIT
+/*Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/07/01, sjc Add for zhongying fg ZY0602*/
+#include <linux/pinctrl/consumer.h>
+#define I2C_RESET_BUS		7
+#define FG_DEVICE_ADDR		0x55
+#define DEVICE_TYPE_ZY0602	3
+#define I2C_STATE "i2c-state"
+#define OUTPUT_LOW_STATE "output-low-state"
+static int fg_device_type = 0;
+static void i2c_gpio_reset(struct mt_i2c *i2c)
+{
+	int ret = 0;
+	static bool i2c_reset_processing = false;
+	struct pinctrl *pctrl = NULL;
+	struct pinctrl_state *i2c_state = NULL;
+	struct pinctrl_state *output_low_state = NULL;
+
+	//pr_err("%s: test i2c id=%d\n", __func__, i2c->id);   /*for debug*/
+	if ((i2c == NULL) || (i2c->id != I2C_RESET_BUS))
+		return;
+
+	pctrl = i2c->pctrl;
+	if (IS_ERR_OR_NULL(pctrl)) {
+		pr_err("%s: no pinctrl setting! id=%d\n", __func__, i2c->id);
+		return;
+	}
+
+	if (i2c_reset_processing == true) {
+		pr_err("%s: i2c_reset is processing, return\n", __func__);
+		return;
+	}
+	i2c_reset_processing = true;
+
+	i2c_state = pinctrl_lookup_state(pctrl, I2C_STATE);
+	if (IS_ERR_OR_NULL(i2c_state)) {
+		pr_err("%s: get pinctrl state: %s failed! id=%d\n", __func__, I2C_STATE, i2c->id);
+		return;
+	}
+
+	output_low_state = pinctrl_lookup_state(pctrl, OUTPUT_LOW_STATE);
+	if (IS_ERR_OR_NULL(output_low_state)) {
+		pr_err("%s: get pinctrl state: %s failed! id=%d\n", __func__, OUTPUT_LOW_STATE, i2c->id);
+		return;
+	}
+
+	ret = pinctrl_select_state(pctrl, output_low_state);
+	if (ret < 0) {
+		pr_err("%s: set pinctrl state: %s failed! id=%d\n", __func__, OUTPUT_LOW_STATE, i2c->id);
+		return;
+	}
+
+	mdelay(2500);
+
+	ret = pinctrl_select_state(pctrl, i2c_state);
+	if (ret < 0) {
+		pr_err("%s: set pinctrl state: %s failed! id=%d\n", __func__, I2C_STATE, i2c->id);
+		return;
+	}
+
+	i2c_reset_processing = false;
+	pr_err("%s: gpio reset successful id=%d\n", __func__, i2c->id);
+}
+
+int oppo_get_fg_device_type(void)
+{
+	pr_err("oppo_get_fg_device_type  fg_device_type[%d]\n", fg_device_type);
+	return fg_device_type;
+}
+EXPORT_SYMBOL(oppo_get_fg_device_type);
+
+void oppo_set_fg_device_type(int device_type)
+{
+	pr_err("oppo_set_fg_device_type  fg_device_type[%d]\n", fg_device_type);
+	fg_device_type = device_type;
+	return;
+}
+EXPORT_SYMBOL(oppo_set_fg_device_type);
+#endif /*VENDOR_EDIT*/
+
 static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 {
 	u16 addr_reg = 0;
@@ -838,6 +978,12 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 	u8 *ptr;
 	int ret = 0;
 	/* u16 ch_offset; */
+
+#ifdef VENDOR_EDIT
+/*Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/07/01, sjc Add for zhongying fg ZY0602*/
+	const char * chg_i2c = "i2c-7";
+	static int err_count_for_reset = 0;
+#endif
 
 	i2c->trans_stop = false;
 	i2c->irq_stat = 0;
@@ -901,7 +1047,11 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 	/* If use i2c pin from PMIC mt6397 side, need set PATH_DIR first */
 	if (i2c->have_pmic)
 		i2c_writew(I2C_CONTROL_WRAPPER, i2c, OFFSET_PATH_DIR);
-	control_reg = I2C_CONTROL_ACKERR_DET_EN | I2C_CONTROL_CLK_EXT_EN;
+	if (speed_hz > 400000)
+		control_reg = I2C_CONTROL_ACKERR_DET_EN;
+	else
+		control_reg = I2C_CONTROL_ACKERR_DET_EN |
+			I2C_CONTROL_CLK_EXT_EN;
 	if (isDMA == true) /* DMA */
 		control_reg |=
 			I2C_CONTROL_DMA_EN |
@@ -997,6 +1147,10 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 
 	/* Prepare buffer data to start transfer */
 	if (isDMA == true && (!i2c->is_ccu_trig)) {
+		if (i2c_readl_dma(i2c, OFFSET_EN)) {
+			i2c_writel_dma(I2C_DMA_WARM_RST, i2c, OFFSET_RST);
+			udelay(5);
+		}
 #ifdef CONFIG_MTK_LM_MODE
 		if ((i2c->dev_comp->dma_support == 1) && (enable_4G())) {
 			i2c_writel_dma(0x1, i2c, OFFSET_TX_MEM_ADDR2);
@@ -1092,6 +1246,7 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 			start_reg, i2c_readw(i2c, OFFSET_ERROR));
 
 		i2c_dump_info(i2c);
+		i2c_gpio_dump_info(i2c);
 		#if defined(CONFIG_MTK_GIC_EXT)
 		mt_irq_dump_status(i2c->irqnr);
 		#endif
@@ -1113,6 +1268,23 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 			dev_info(i2c->dev, "bus channel transferred\n");
 		}
 
+#ifdef VENDOR_EDIT
+/*Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/07/01, sjc Add for zhongying fg ZY0602*/
+		if (!strcmp(dev_name(i2c->dev), chg_i2c) && i2c->addr == FG_DEVICE_ADDR) {
+			dev_err(i2c->dev, "[OPPO_TEST] %s, %x \n", dev_name(i2c->dev), i2c->addr);
+			if (oppo_get_fg_device_type() == DEVICE_TYPE_ZY0602) {
+				if (err_count_for_reset >= 5) {
+					i2c_gpio_reset(i2c);
+					err_count_for_reset = 0;
+				} else {
+					err_count_for_reset++;
+				}
+			} else {
+				i2c_gpio_reset(i2c);
+			}
+		}
+#endif /*VENDOR_EDIT*/
+
 		if (start_reg & I2C_TRANSAC_START) {
 			dev_info(i2c->dev, "bus tied low/high(0x%x)\n",
 				start_reg);
@@ -1120,6 +1292,13 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 		}
 		return -ETIMEDOUT;
 	}
+#ifdef VENDOR_EDIT
+/*Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/07/01, sjc Add for zhongying fg ZY0602*/
+	else {
+		err_count_for_reset = 0;
+	}
+#endif /*VENDOR_EDIT*/
+
 	if (i2c->irq_stat & (I2C_HS_NACKERR | I2C_ACKERR |
 	    I2C_TIMEOUT | I2C_BUS_ERR | I2C_IBI)) {
 		dev_info(i2c->dev,
@@ -1131,9 +1310,10 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 			i2c, OFFSET_FIFO_ADDR_CLR);
 
 		if (i2c->ext_data.isEnable ==  false ||
-			i2c->ext_data.isFilterMsg == false)
+			i2c->ext_data.isFilterMsg == false) {
 			i2c_dump_info(i2c);
-		else
+			i2c_gpio_dump_info(i2c);
+		} else
 			dev_info(i2c->dev, "addr:0x%x,ext_data skip more log\n",
 				i2c->addr);
 
@@ -1177,13 +1357,10 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 		return -EREMOTEIO;
 	}
 	if (i2c->op != I2C_MASTER_WR && isDMA == false) {
-		if (i2c->ch_offset != 0) {
-			if (i2c->op == I2C_MASTER_WRRD)
-				data_size = i2c->msg_aux_len;
-			else
-				data_size = i2c->msg_len;
-		} else
-		data_size = (i2c_readw(i2c, OFFSET_FIFO_STAT) >> 4) & 0x000F;
+		if (i2c->op == I2C_MASTER_WRRD)
+			data_size = i2c->msg_aux_len;
+		else
+			data_size = i2c->msg_len;
 		ptr = i2c->dma_buf.vaddr;
 		while (data_size--) {
 			*ptr = i2c_readw(i2c, OFFSET_DATA_PORT);
@@ -1558,6 +1735,7 @@ static irqreturn_t mt_i2c_irq(int irqno, void *dev_id)
 			if ((i2c->irq_stat & (I2C_IBI | I2C_BUS_ERR))) {
 				dev_info(i2c->dev, "[bxx]cg_cnt:%d,irq_stat:0x%x\n",
 					i2c->cg_cnt, i2c->irq_stat);
+#if 0
 				dev_info(i2c->dev, "0x84=0x%x\n",
 					i2c_readw(i2c, OFFSET_ERROR));
 
@@ -1587,6 +1765,7 @@ static irqreturn_t mt_i2c_irq(int irqno, void *dev_id)
 					_i2c_readw(i2c, 0x154),
 					_i2c_readw(i2c, 0x254));
 				/* for bxx debug end */
+#endif
 			}
 		}
 	} else {/* dump regs info for hw trig i2c if ACK err */
@@ -1620,6 +1799,13 @@ static int mt_i2c_parse_dt(struct device_node *np, struct mt_i2c *i2c)
 	i2c->speed_hz = I2C_DEFAUT_SPEED;
 	of_property_read_u32(np, "clock-frequency", &i2c->speed_hz);
 	of_property_read_u32(np, "clock-div", &i2c->clk_src_div);
+	of_property_read_u32(np, "scl-gpio-id", &i2c->scl_gpio_id);
+	of_property_read_u32(np, "sda-gpio-id", &i2c->sda_gpio_id);
+	of_property_read_u32(np, "gpio_start", &i2c->gpio_start);
+	of_property_read_u32(np, "mem_len", &i2c->mem_len);
+	of_property_read_u32(np, "eh_cfg", &i2c->offset_eh_cfg);
+	of_property_read_u32(np, "pu_cfg", &i2c->offset_pu_cfg);
+	of_property_read_u32(np, "rsel_cfg", &i2c->offset_rsel_cfg);
 	of_property_read_u32(np, "id", (u32 *)&i2c->id);
 	of_property_read_u16(np, "clk_sta_offset",
 		(u16 *)&i2c->clk_sta_offset);
@@ -1736,6 +1922,12 @@ static int mt_i2c_probe(struct platform_device *pdev)
 	if (IS_ERR(i2c->pdmabase))
 		return PTR_ERR(i2c->pdmabase);
 
+	i2c->gpiobase = devm_ioremap(&pdev->dev, i2c->gpio_start, i2c->mem_len);
+	if (IS_ERR(i2c->gpiobase)) {
+		i2c->gpiobase = NULL;
+		dev_info(&pdev->dev, "do not have gpio baseaddress node\n");
+	}
+
 	i2c->irqnr = platform_get_irq(pdev, 0);
 	if (i2c->irqnr <= 0)
 		return -EINVAL;
@@ -1752,6 +1944,11 @@ static int mt_i2c_probe(struct platform_device *pdev)
 	if (!of_id)
 		return -EINVAL;
 
+#ifdef VENDOR_EDIT
+/*Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/07/01, sjc Add for zhongying fg ZY0602*/
+	i2c->pctrl = devm_pinctrl_get(&pdev->dev);
+#endif
+
 	i2c->dev_comp = of_id->data;
 	i2c->adap.dev.of_node = pdev->dev.of_node;
 	i2c->dev = &i2c->adap.dev;
@@ -1765,7 +1962,7 @@ static int mt_i2c_probe(struct platform_device *pdev)
 	spin_lock_init(&i2c->cg_lock);
 
 	if (i2c->dev_comp->dma_support == 2) {
-		if (dma_set_mask(&pdev->dev, DMA_BIT_MASK(33))) {
+		if (dma_set_mask(&pdev->dev, DMA_BIT_MASK(34))) {
 			dev_info(&pdev->dev, "dma_set_mask return error.\n");
 			return -EINVAL;
 		}

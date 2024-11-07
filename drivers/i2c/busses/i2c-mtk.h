@@ -37,6 +37,12 @@
 
 #define I2C_DEBUG_FS
 
+#ifdef VENDOR_EDIT
+/* Jianchao.Shi@BSP.CHG.Basic, 2019/06/24, sjc Add for I2C5(high speed mode) duty ratio */
+#define I2C_HS_HOLD_SEL                 (0x1 << 15)
+#define I2C_HS_HOLD_TIME                (0x1 << 2)
+#endif
+
 #define I2C_BUS_ERR			(0x01 << 8)
 #define I2C_IBI				(0x01 << 7)
 #define I2C_DMAERR			(0x01 << 6)
@@ -71,6 +77,7 @@
 #define I2C_FS_START_CON			0x1800
 #define I2C_TIME_CLR_VALUE			0x0000
 #define I2C_TIME_DEFAULT_VALUE		0x0003
+#define I2C_HS_SPEED			0x0080
 #define I2C_TIMEOUT_EN				0x0001
 #define I2C_ROLLBACK				0x0001
 #define I2C_SHADOW_REG_MODE		0x0002
@@ -340,8 +347,16 @@ struct mt_i2c {
 	/* set in i2c probe */
 	void __iomem *base;/* i2c base addr */
 	void __iomem *pdmabase;/* dma base address*/
+	void __iomem *gpiobase;/* gpio base address */
 	int irqnr;	/* i2c interrupt number */
 	int id;
+	int scl_gpio_id; /* SCL GPIO number */
+	int sda_gpio_id; /* SDA GPIO number */
+	unsigned int gpio_start;
+	unsigned int mem_len;
+	unsigned int offset_eh_cfg;
+	unsigned int offset_pu_cfg;
+	unsigned int offset_rsel_cfg;
 	struct i2c_dma_buf dma_buf;/* memory alloc for DMA mode */
 	struct clk *clk_main;/* main clock for i2c bus */
 	struct clk *clk_dma;/* DMA clock for i2c via DMA */
@@ -390,6 +405,10 @@ struct mt_i2c {
 	struct mt_i2c_ext ext_data;
 	const struct mtk_i2c_compatible *dev_comp;
 	struct i2c_info rec_info[I2C_RECORD_LEN];
+#ifdef VENDOR_EDIT
+/*Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/07/01, sjc Add for zhongying fg ZY0602*/
+	struct pinctrl *pctrl;
+#endif /*VENDOR_EDIT*/
 };
 
 #if defined(CONFIG_MTK_FPGA) || defined(CONFIG_FPGA_EARLY_PORTING)
@@ -403,7 +422,7 @@ struct mt_i2c {
 /* Hz for FPGA I2C work frequency */
 #endif
 
-
+extern void gpio_dump_regs_range(int start, int end);
 extern void i2c_dump_info(struct mt_i2c *i2c);
 #if defined(CONFIG_MTK_GIC_EXT)
 extern void mt_irq_dump_status(unsigned int irq);
