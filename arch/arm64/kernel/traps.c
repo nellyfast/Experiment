@@ -284,8 +284,8 @@ void die(const char *str, struct pt_regs *regs, int err)
 	if (ESR_ELx_EC(err) == ESR_ELx_EC_DABT_CUR)
 		thread->cpu_excp++;
 
-	if (die_owner == -1)
-		aee_save_excp_regs(regs);
+	/*if (die_owner == -1)
+		aee_save_excp_regs(regs);*/
 
 	oops_enter();
 
@@ -687,6 +687,15 @@ int register_async_abort_handler(void (*fn)(struct pt_regs *regs, void *),
 asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 {
 	console_verbose();
+
+#ifdef CONFIG_MEDIATEK_SOLUTION
+	/*
+	 * reason is defined in entry.S, 3 means BAD_ERROR,
+	 * which would be triggered by async abort
+	 */
+	if ((reason == 3) && async_abort_handler)
+		async_abort_handler(regs, async_abort_priv);
+#endif
 
 	pr_crit("Bad mode in %s handler detected on CPU%d, code 0x%08x -- %s\n",
 		handler[reason], smp_processor_id(), esr,
