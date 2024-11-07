@@ -89,6 +89,13 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
+#ifdef VENDOR_EDIT
+// Kun.Hu@PSW.TECH 2018/11/15, Add phoenix base
+#ifdef HANG_OPPO_ALL
+#include <soc/oppo/phoenix_base.h>
+#endif
+#endif  //VENDOR_EDIT
+
 #ifdef CONFIG_MTK_RAM_CONSOLE
 #include <mt-plat/mtk_ram_console.h>
 #endif
@@ -98,6 +105,14 @@ static int kernel_init(void *);
 extern void init_IRQ(void);
 extern void fork_init(void);
 extern void radix_tree_init(void);
+#ifdef VENDOR_EDIT
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+extern void op_log_boot(char *str);
+// Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+//extern void phx_monit(const char *monitor_command);
+#endif
+#endif  //VENDOR_EDIT
 
 /*
  * Debug helper: via this flag we know that we are in 'early bootup code'
@@ -541,6 +556,16 @@ asmlinkage __visible void __init start_kernel(void)
 	sort_main_extable();
 	trap_init();
 	mm_init();
+/*
+#ifdef 0
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+	// Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+	op_log_boot(ACTION_SET_BOOTSTAGE "@" KERNEL_MM_INIT_DONE);
+	phx_monit(ACTION_SET_BOOTSTAGE "@" KERNEL_MM_INIT_DONE);
+#endif
+#endif
+*/
 
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the
@@ -582,6 +607,16 @@ asmlinkage __visible void __init start_kernel(void)
 	WARN(!irqs_disabled(), "Interrupts were enabled early\n");
 	early_boot_irqs_disabled = false;
 	local_irq_enable();
+/*
+#if 0
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+    // Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+	op_log_boot(ACTION_SET_BOOTSTAGE "@" KERNEL_LOCAL_IRQ_ENABLE);
+	phx_monit(ACTION_SET_BOOTSTAGE "@" KERNEL_LOCAL_IRQ_ENABLE);
+#endif
+#endif
+*/
 
 	kmem_cache_init_late();
 
@@ -651,6 +686,14 @@ asmlinkage __visible void __init start_kernel(void)
 	cgroup_init();
 	taskstats_init_early();
 	delayacct_init();
+#ifdef VENDOR_EDIT
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+    // Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+	op_log_boot(ACTION_SET_BOOTSTAGE "@" KERNEL_DELAYACCT_INIT_DONE);
+	//phx_monit(ACTION_SET_BOOTSTAGE "@" KERNEL_DELAYACCT_INIT_DONE);
+#endif
+#endif
 
 	check_bugs();
 
@@ -864,6 +907,10 @@ static void __init do_initcall_level(int level)
 		do_one_initcall(*fn);
 }
 
+#ifdef VENDOR_EDIT
+//cuixiaogang@SRC.hypnus.2019-1-3. add for hypnusd
+extern int __init hypnus_init(void);
+#endif /* VENDOR_EDIT */
 static void __init do_initcalls(void)
 {
 	int level;
@@ -873,6 +920,13 @@ static void __init do_initcalls(void)
 #ifdef CONFIG_MTK_RAM_CONSOLE
 	aee_rr_rec_last_init_func(~(unsigned long)(0));
 #endif
+
+#ifdef VENDOR_EDIT
+//cuixiaogang@SRC.hypnus.2019-1-3. add for hypnusd
+#ifdef CONFIG_OPPO_HYPNUS
+	hypnus_init();
+#endif
+#endif /* VENDOR_EDIT */
 }
 
 /*
@@ -887,10 +941,26 @@ static void __init do_basic_setup(void)
 	cpuset_init_smp();
 	shmem_init();
 	driver_init();
+#ifdef VENDOR_EDIT
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+    // Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+	op_log_boot(ACTION_SET_BOOTSTAGE "@" KERNEL_DRIVER_INIT_DONE);
+	//phx_monit(ACTION_SET_BOOTSTAGE "@" KERNEL_DRIVER_INIT_DONE);
+#endif
+#endif
 	init_irq_proc();
 	do_ctors();
 	usermodehelper_enable();
 	do_initcalls();
+#ifdef VENDOR_EDIT
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+    // Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+	op_log_boot(ACTION_SET_BOOTSTAGE "@" KERNEL_DO_INITCALLS_DONE);
+	//phx_monit(ACTION_SET_BOOTSTAGE "@" KERNEL_DO_INITCALLS_DONE);
+#endif
+#endif
 }
 
 static void __init do_pre_smp_initcalls(void)
@@ -976,6 +1046,14 @@ static int __ref kernel_init(void *unused)
 #ifdef CONFIG_MTPROF
 	log_boot("Kernel_init_done");
 #endif
+#ifdef VENDOR_EDIT
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+    // Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+	op_log_boot(ACTION_SET_BOOTSTAGE "@" KERNEL_INIT_DONE);
+	//phx_monit(ACTION_SET_BOOTSTAGE "@" KERNEL_INIT_DONE);
+#endif
+#endif
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
 		if (!ret)
@@ -1039,6 +1117,15 @@ static noinline void __init kernel_init_freeable(void)
 	page_alloc_init_late();
 
 	do_basic_setup();
+
+#ifdef VENDOR_EDIT
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/07, Add for get bootup log
+#ifdef HANG_OPPO_ALL
+    // Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
+	op_log_boot(ACTION_SET_BOOTSTAGE "@" KERNEL_DO_BASIC_SETUP_DONE);
+	//phx_monit(ACTION_SET_BOOTSTAGE "@" KERNEL_DO_BASIC_SETUP_DONE);
+#endif
+#endif
 
 	/* Open the /dev/console on the rootfs, this should never fail */
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
