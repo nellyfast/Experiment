@@ -68,7 +68,13 @@
 #include <mt-plat/upmu_common.h>
 #include <pmic_lbat_service.h>
 
+#include "../../../oppo/oppo_gauge.h"
 
+#ifdef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basic 2018.11.29 add for battery name file node*/
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+#endif /*ODM_HQ_EDIT*/
 
 /* ============================================================ */
 /* define */
@@ -109,7 +115,7 @@ static int adc_cali_cal[1] = { 0 };
 static int battery_in_data[1] = { 0 };
 static int battery_out_data[1] = { 0 };
 static bool g_ADC_Cali;
-
+#if 0
 static enum power_supply_property battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -124,7 +130,7 @@ static enum power_supply_property battery_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_TEMP,
 };
-
+#endif
 /* weak function */
 int __attribute__ ((weak))
 	do_ptim_gauge(
@@ -335,7 +341,7 @@ void battery_update_psd(struct battery_data *bat_data)
 	bat_data->BAT_batt_vol = battery_get_bat_voltage();
 	bat_data->BAT_batt_temp = battery_get_bat_temperature();
 }
-
+#if 0
 static int battery_get_property(struct power_supply *psy,
 	enum power_supply_property psp,
 	union power_supply_propval *val)
@@ -403,9 +409,10 @@ static int battery_get_property(struct power_supply *psy,
 
 	return ret;
 }
-
+#endif
 /* battery_data initialization */
 struct battery_data battery_main = {
+#if 0
 	.psd = {
 		.name = "battery",
 		.type = POWER_SUPPLY_TYPE_BATTERY,
@@ -413,7 +420,7 @@ struct battery_data battery_main = {
 		.num_properties = ARRAY_SIZE(battery_props),
 		.get_property = battery_get_property,
 		},
-
+#endif
 	.BAT_STATUS = POWER_SUPPLY_STATUS_DISCHARGING,
 	.BAT_HEALTH = POWER_SUPPLY_HEALTH_GOOD,
 	.BAT_PRESENT = 1,
@@ -436,7 +443,7 @@ void evb_battery_init(void)
 
 void battery_update(struct battery_data *bat_data)
 {
-	struct power_supply *bat_psy = bat_data->psy;
+//	struct power_supply *bat_psy = bat_data->psy;
 
 	battery_update_psd(&battery_main);
 	bat_data->BAT_TECHNOLOGY = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -446,11 +453,11 @@ void battery_update(struct battery_data *bat_data)
 #if defined(CONFIG_MTK_DISABLE_GAUGE)
 	return;
 #endif
-
+	return;
 	if (is_fg_disabled())
 		bat_data->BAT_CAPACITY = 50;
 
-	power_supply_changed(bat_psy);
+//	power_supply_changed(bat_psy);
 }
 
 bool is_kernel_power_off_charging(void)
@@ -493,41 +500,267 @@ static void proc_dump_dtsi(struct seq_file *m)
 	int i;
 
 	seq_puts(m, "********** dump DTSI **********\n");
-	seq_printf(m, "DIFFERENCE_FULLOCV_ITH = %d\n",
-		fg_cust_data.difference_fullocv_ith);
-	seq_printf(m, "Q_MAX_SYS_VOLTAGE_BAT = %d\n",
-		fg_cust_data.q_max_sys_voltage);
-
-	seq_printf(m, "SHUTDOWN_1_TIME = %d\n",
-		fg_cust_data.shutdown_1_time);
-	seq_printf(m, "KEEP_100_PERCENT = %d\n",
-		fg_cust_data.keep_100_percent);
-	seq_printf(m, "R_FG_VALUE = %d\n",
-		fg_cust_data.r_fg_value);
 
 	seq_printf(m, "Active Table :%d\n",
 		fg_table_cust_data.active_table_number);
 
-	for (i = 0; i < fg_table_cust_data.active_table_number; i++)
-		seq_printf(m, "TEMPERATURE_%d = %d\n",
-			i,
-			fg_table_cust_data.fg_profile[i].temperature);
-
-	for (i = 0; i < fg_table_cust_data.active_table_number; i++)
+	for (i = 0; i < fg_table_cust_data.active_table_number; i++) {
+		seq_printf(m, "PMIC_MIN_VOL = %d\n",
+			fg_table_cust_data.fg_profile[i].pmic_min_vol);
+	}
+	for (i = 0; i < fg_table_cust_data.active_table_number; i++) {
+		seq_printf(m, "POWERON_SYSTEM_IBOOT = %d\n",
+			fg_table_cust_data.fg_profile[i].pon_iboot);
+	}
+	for (i = 0; i < fg_table_cust_data.active_table_number; i++) {
+		seq_printf(m, "TEMPERATURE_T%d = %d\n",
+			i, fg_table_cust_data.fg_profile[i].temperature);
+	}
+	for (i = 0; i < fg_table_cust_data.active_table_number; i++) {
 		seq_printf(m, "g_FG_PSEUDO100_%d = %d\n",
-			i,
-			fg_table_cust_data.fg_profile[i].pseudo100);
+			i, fg_table_cust_data.fg_profile[i].pseudo100);
+	}
 
-
-	seq_printf(m, "EMBEDDED_SEL = %d\n", fg_cust_data.embedded_sel);
+	seq_printf(m, "DIFFERENCE_FULLOCV_ITH = %d\n",
+		fg_cust_data.difference_fullocv_ith);
+	seq_printf(m, "SHUTDOWN_1_TIME = %d\n",
+		fg_cust_data.shutdown_1_time);
+	seq_printf(m, "KEEP_100_PERCENT = %d\n",
+		fg_cust_data.keep_100_percent_minsoc);
+	seq_printf(m, "R_FG_VALUE = %d\n",
+		fg_cust_data.r_fg_value);
+	seq_printf(m, "EMBEDDED_SEL = %d\n",
+		fg_cust_data.embedded_sel);
 	seq_printf(m, "PMIC_SHUTDOWN_CURRENT = %d\n",
 		fg_cust_data.pmic_shutdown_current);
 	seq_printf(m, "FG_METER_RESISTANCE = %d\n",
 		fg_cust_data.fg_meter_resistance);
+	seq_printf(m, "CAR_TUNE_VALUE = %d\n",
+		fg_cust_data.car_tune_value);
+	seq_printf(m, "SHUTDOWN_GAUGE0_VOLTAGE = %d\n",
+		fg_cust_data.shutdown_gauge0_voltage);
+	seq_printf(m, "Q_MAX_SYS_VOLTAGE = %d\n",
+		fg_cust_data.q_max_sys_voltage);
 	seq_printf(m, "COM_FG_METER_RESISTANCE = %d\n",
 		fg_cust_data.com_fg_meter_resistance);
-	seq_printf(m, "CAR_TUNE_VALUE = %d\n", fg_cust_data.car_tune_value);
+	seq_printf(m, "COM_R_FG_VALUE = %d\n",
+		fg_cust_data.com_r_fg_value);
+	seq_printf(m, "enable_tmp_intr_suspend = %d\n",
+		gm.enable_tmp_intr_suspend);
+	seq_printf(m, "ACTIVE_TABLE = %d\n",
+		fg_table_cust_data.active_table_number);
+	seq_printf(m, "MULTI_TEMP_GAUGE0 = %d\n",
+		fg_cust_data.multi_temp_gauge0);
+	seq_printf(m, "SHUTDOWN_GAUGE0 = %d\n",
+		fg_cust_data.shutdown_gauge0);
+	seq_printf(m, "SHUTDOWN_GAUGE1_XMINS = %d\n",
+		fg_cust_data.shutdown_gauge1_xmins);
+	seq_printf(m, "SHUTDOWN_GAUGE1_VBAT_EN = %d\n",
+		fg_cust_data.shutdown_gauge1_vbat_en);
+	seq_printf(m, "SHUTDOWN_GAUGE1_VBAT = %d\n",
+		fg_cust_data.shutdown_gauge1_vbat);
+	seq_printf(m, "PSEUDO100_EN = %d\n",
+		fg_cust_data.pseudo100_en);
+	seq_printf(m, "PSEUDO100_EN_DIS = %d\n",
+		fg_cust_data.pseudo100_en_dis);
 
+
+
+	seq_printf(m, "CHARGE_PSEUDO_FULL_LEVEL = %d\n",
+		fg_cust_data.charge_pseudo_full_level);
+	seq_printf(m, "FULL_TRACKING_BAT_INT2_MULTIPLY = %d\n",
+		fg_cust_data.full_tracking_bat_int2_multiply);
+	seq_printf(m, "DISCHARGE_TRACKING_TIME = %d\n",
+		fg_cust_data.discharge_tracking_time);
+	seq_printf(m, "CHARGE_TRACKING_TIME = %d\n",
+		fg_cust_data.charge_tracking_time);
+	seq_printf(m, "DIFFERENCE_FULLOCV_VTH = %d\n",
+		fg_cust_data.difference_fullocv_vth);
+	seq_printf(m, "HWOCV_SWOCV_DIFF = %d\n",
+		fg_cust_data.hwocv_swocv_diff);
+	seq_printf(m, "HWOCV_SWOCV_DIFF_LT = %d\n",
+		fg_cust_data.hwocv_swocv_diff_lt);
+	seq_printf(m, "HWOCV_SWOCV_DIFF_LT_TEMP = %d\n",
+		fg_cust_data.hwocv_swocv_diff_lt_temp);
+	seq_printf(m, "HWOCV_OLDOCV_DIFF = %d\n",
+		fg_cust_data.hwocv_oldocv_diff);
+	seq_printf(m, "HWOCV_OLDOCV_DIFF_CHR = %d\n",
+		fg_cust_data.hwocv_oldocv_diff_chr);
+	seq_printf(m, "VBAT_OLDOCV_DIFF = %d\n",
+		fg_cust_data.vbat_oldocv_diff);
+	seq_printf(m, "SWOCV_OLDOCV_DIFF_EMB = %d\n",
+		fg_cust_data.swocv_oldocv_diff_emb);
+	seq_printf(m, "TNEW_TOLD_PON_DIFF = %d\n",
+		fg_cust_data.tnew_told_pon_diff);
+	seq_printf(m, "TNEW_TOLD_PON_DIFF2 = %d\n",
+		fg_cust_data.tnew_told_pon_diff2);
+	seq_printf(m, "PMIC_SHUTDOWN_TIME = %d\n",
+		fg_cust_data.pmic_shutdown_time);
+	seq_printf(m, "EXT_HWOCV_SWOCV = %d\n",
+		gm.ext_hwocv_swocv);
+	seq_printf(m, "EXT_HWOCV_SWOCV_LT = %d\n",
+		gm.ext_hwocv_swocv_lt);
+	seq_printf(m, "EXT_HWOCV_SWOCV_LT_TEMP = %d\n",
+		gm.ext_hwocv_swocv_lt_temp);
+	seq_printf(m, "DIFFERENCE_FGC_FGV_TH1 = %d\n",
+		fg_cust_data.difference_fgc_fgv_th1);
+	seq_printf(m, "DIFFERENCE_FGC_FGV_TH2 = %d\n",
+		fg_cust_data.difference_fgc_fgv_th2);
+	seq_printf(m, "DIFFERENCE_FGC_FGV_TH3 = %d\n",
+		fg_cust_data.difference_fgc_fgv_th3);
+	seq_printf(m, "DIFFERENCE_FGC_FGV_TH_SOC1 = %d\n",
+		fg_cust_data.difference_fgc_fgv_th_soc1);
+	seq_printf(m, "DIFFERENCE_FGC_FGV_TH_SOC2 = %d\n",
+		fg_cust_data.difference_fgc_fgv_th_soc2);
+	seq_printf(m, "PMIC_SHUTDOWN_SW_EN = %d\n",
+		fg_cust_data.pmic_shutdown_sw_en);
+	seq_printf(m, "FORCE_VC_MODE = %d\n",
+		fg_cust_data.force_vc_mode);
+	seq_printf(m, "ZCV_SUSPEND_TIME = %d\n",
+		fg_cust_data.zcv_suspend_time);
+	seq_printf(m, "SLEEP_CURRENT_AVG = %d\n",
+		fg_cust_data.sleep_current_avg);
+	seq_printf(m, "ZCV_CAR_GAP_PERCENTAGE = %d\n",
+		fg_cust_data.zcv_car_gap_percentage);
+	seq_printf(m, "UI_FULL_LIMIT_EN = %d\n",
+		fg_cust_data.ui_full_limit_en);
+	seq_printf(m, "UI_FULL_LIMIT_SOC0 = %d\n",
+		fg_cust_data.ui_full_limit_soc0);
+	seq_printf(m, "UI_FULL_LIMIT_ITH0 = %d\n",
+		fg_cust_data.ui_full_limit_ith0);
+	seq_printf(m, "UI_FULL_LIMIT_SOC1 = %d\n",
+		fg_cust_data.ui_full_limit_soc1);
+	seq_printf(m, "UI_FULL_LIMIT_ITH1 = %d\n",
+		fg_cust_data.ui_full_limit_ith1);
+	seq_printf(m, "UI_FULL_LIMIT_SOC2 = %d\n",
+		fg_cust_data.ui_full_limit_soc2);
+	seq_printf(m, "UI_FULL_LIMIT_ITH2 = %d\n",
+		fg_cust_data.ui_full_limit_ith2);
+	seq_printf(m, "UI_FULL_LIMIT_SOC3 = %d\n",
+		fg_cust_data.ui_full_limit_soc3);
+	seq_printf(m, "UI_FULL_LIMIT_ITH3 = %d\n",
+		fg_cust_data.ui_full_limit_ith3);
+	seq_printf(m, "UI_FULL_LIMIT_SOC4 = %d\n",
+		fg_cust_data.ui_full_limit_soc4);
+	seq_printf(m, "UI_FULL_LIMIT_ITH4 = %d\n",
+		fg_cust_data.ui_full_limit_ith4);
+	seq_printf(m, "UI_FULL_LIMIT_TIME = %d\n",
+		fg_cust_data.ui_full_limit_time);
+
+	seq_printf(m, "UI_LOW_LIMIT_EN = %d\n",
+		fg_cust_data.ui_low_limit_en);
+	seq_printf(m, "UI_LOW_LIMIT_SOC0 = %d\n",
+		fg_cust_data.ui_low_limit_soc0);
+	seq_printf(m, "UI_LOW_LIMIT_VTH0 = %d\n",
+		fg_cust_data.ui_low_limit_vth0);
+	seq_printf(m, "UI_LOW_LIMIT_SOC1 = %d\n",
+		fg_cust_data.ui_low_limit_soc1);
+	seq_printf(m, "UI_LOW_LIMIT_VTH1 = %d\n",
+		fg_cust_data.ui_low_limit_vth1);
+	seq_printf(m, "UI_LOW_LIMIT_SOC2 = %d\n",
+		fg_cust_data.ui_low_limit_soc2);
+	seq_printf(m, "UI_LOW_LIMIT_VTH2 = %d\n",
+		fg_cust_data.ui_low_limit_vth2);
+	seq_printf(m, "UI_LOW_LIMIT_SOC3 = %d\n",
+		fg_cust_data.ui_low_limit_soc3);
+	seq_printf(m, "UI_LOW_LIMIT_VTH3 = %d\n",
+		fg_cust_data.ui_low_limit_vth3);
+	seq_printf(m, "UI_LOW_LIMIT_SOC4 = %d\n",
+		fg_cust_data.ui_low_limit_soc4);
+	seq_printf(m, "UI_LOW_LIMIT_VTH4 = %d\n",
+		fg_cust_data.ui_low_limit_vth4);
+	seq_printf(m, "UI_LOW_LIMIT_TIME = %d\n",
+		fg_cust_data.ui_low_limit_time);
+	seq_printf(m, "FG_PRE_TRACKING_EN = %d\n",
+		fg_cust_data.fg_pre_tracking_en);
+	seq_printf(m, "VBAT2_DET_TIME = %d\n",
+		fg_cust_data.vbat2_det_time);
+	seq_printf(m, "VBAT2_DET_COUNTERE = %d\n",
+		fg_cust_data.vbat2_det_counter);
+	seq_printf(m, "VBAT2_DET_VOLTAGE1 = %d\n",
+		fg_cust_data.vbat2_det_voltage1);
+	seq_printf(m, "VBAT2_DET_VOLTAGE2 = %d\n",
+		fg_cust_data.vbat2_det_voltage2);
+	seq_printf(m, "VBAT2_DET_VOLTAGE3 = %d\n",
+		fg_cust_data.vbat2_det_voltage3);
+	seq_printf(m, "AGING_FACTOR_MIN = %d\n",
+		fg_cust_data.aging_factor_min);
+	seq_printf(m, "AGING_FACTOR_DIFF = %d\n",
+		fg_cust_data.aging_factor_diff);
+	seq_printf(m, "DIFFERENCE_VOLTAGE_UPDATE = %d\n",
+		fg_cust_data.difference_voltage_update);
+	seq_printf(m, "AGING_ONE_EN = %d\n",
+		fg_cust_data.aging_one_en);
+	seq_printf(m, "AGING1_UPDATE_SOC = %d\n",
+		fg_cust_data.aging1_update_soc);
+	seq_printf(m, "AGING1_LOAD_SOC = %d\n",
+		fg_cust_data.aging1_load_soc);
+	seq_printf(m, "AGING_TEMP_DIFF = %d\n",
+		fg_cust_data.aging_temp_diff);
+	seq_printf(m, "AGING_100_EN = %d\n",
+		fg_cust_data.aging_100_en);
+	seq_printf(m, "AGING_TWO_EN = %d\n",
+		fg_cust_data.aging_two_en);
+	seq_printf(m, "AGING_THIRD_EN = %d\n",
+		fg_cust_data.aging_third_en);
+	seq_printf(m, "DIFF_SOC_SETTING = %d\n",
+		fg_cust_data.diff_soc_setting);
+	seq_printf(m, "DIFF_BAT_TEMP_SETTING = %d\n",
+		fg_cust_data.diff_bat_temp_setting);
+	seq_printf(m, "DIFF_BAT_TEMP_SETTING_C = %d\n",
+		fg_cust_data.diff_bat_temp_setting_c);
+	seq_printf(m, "DIFF_IAVG_TH = %d\n",
+		fg_cust_data.diff_iavg_th);
+	seq_printf(m, "FG_TRACKING_CURRENT = %d\n",
+		fg_cust_data.fg_tracking_current);
+	seq_printf(m, "FG_TRACKING_CURRENT_IBOOT_EN = %d\n",
+		fg_cust_data.fg_tracking_current_iboot_en);
+	seq_printf(m, "UISOC_UPDATE_TYPE = %d\n",
+		fg_cust_data.uisoc_update_type);
+	seq_printf(m, "OVER_DISCHARGE_LEVEL = %d\n",
+		fg_cust_data.over_discharge_level);
+	seq_printf(m, "NAFG_TIME_SETTING = %d\n",
+		fg_cust_data.nafg_time_setting);
+	seq_printf(m, "NAFG_RATIO = %d\n",
+		fg_cust_data.nafg_ratio);
+
+
+	seq_printf(m, "NAFG_RATIO_EN = %d\n",
+		fg_cust_data.nafg_ratio_en);
+	seq_printf(m, "NAFG_RATIO_TMP_THR = %d\n",
+		fg_cust_data.nafg_ratio_tmp_thr);
+	seq_printf(m, "D0_SEL = %d\n",
+		fg_cust_data.d0_sel);
+	seq_printf(m, "IBOOT_SEL = %d\n",
+		fg_cust_data.iboot_sel);
+	seq_printf(m, "SHUTDOWN_SYSTEM_IBOOT = %d\n",
+		fg_cust_data.shutdown_system_iboot);
+	seq_printf(m, "DIFFERENCE_FULL_CV = %d\n",
+		fg_cust_data.difference_full_cv);
+	seq_printf(m, "PSEUDO1_EN = %d\n",
+		fg_cust_data.pseudo1_en);
+	seq_printf(m, "LOADING_1_EN = %d\n",
+		fg_cust_data.loading_1_en);
+	seq_printf(m, "LOADING_2_EN = %d\n",
+		fg_cust_data.loading_2_en);
+	seq_printf(m, "PSEUDO1_SEL = %d\n",
+		fg_cust_data.pseudo1_sel);
+	seq_printf(m, "UI_FAST_TRACKING_EN = %d\n",
+		fg_cust_data.ui_fast_tracking_en);
+	seq_printf(m, "UI_FAST_TRACKING_GAP = %d\n",
+		fg_cust_data.ui_fast_tracking_gap);
+	seq_printf(m, "KEEP_100_PERCENT_MINSOC = %d\n",
+		fg_cust_data.keep_100_percent_minsoc);
+	seq_printf(m, "NO_BAT_TEMP_COMPENSATE = %d\n",
+		gm.no_bat_temp_compensate);
+	seq_printf(m, "LOW_TEMP_MODE = %d\n",
+		fg_cust_data.low_temp_mode);
+	seq_printf(m, "LOW_TEMP_MODE_TEMP = %d\n",
+		fg_cust_data.low_temp_mode_temp);
+	seq_printf(m, "Q_MAX_L_CURRENT = %d\n",
+		fg_cust_data.q_max_L_current);
+	seq_printf(m, "Q_MAX_H_CURRENT = %d\n",
+		fg_cust_data.q_max_H_current);
 	seq_printf(m, "pl_two_sec_reboot = %d\n", gm.pl_two_sec_reboot);
 #ifdef SHUTDOWN_CONDITION_LOW_BAT_VOLT
 	seq_puts(m, "SHUTDOWN_CONDITION_LOW_BAT_VOLT = 1\n");
@@ -539,10 +772,6 @@ static void proc_dump_dtsi(struct seq_file *m)
 #else
 	seq_puts(m, "SHUTDOWN_CONDITION_LOW_BAT_VOLT = 0\n");
 #endif
-
-	seq_printf(m, "multi_temp_gauge0 = %d\n",
-	fg_cust_data.multi_temp_gauge0);
-
 	seq_printf(m, "hw_version = %d\n", gauge_get_hw_version());
 
 }
@@ -976,13 +1205,24 @@ int BattThermistorConverTemp(int Res)
 
 	if (Res >= Fg_Temperature_Table[0].TemperatureR) {
 		TBatt_Value = -40;
+#ifndef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basic 2019.04.10 add more Rntc to temp */
 	} else if (Res <= Fg_Temperature_Table[20].TemperatureR) {
 		TBatt_Value = 60;
+#else /*ODM_HQ_EDIT*/
+	} else if (Res <= Fg_Temperature_Table[27].TemperatureR) {
+		TBatt_Value = 95;
+#endif /*ODM_HQ_EDIT*/
 	} else {
 		RES1 = Fg_Temperature_Table[0].TemperatureR;
 		TMP1 = Fg_Temperature_Table[0].BatteryTemp;
 
+#ifndef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basic 2019.04.10 add more Rntc to temp */
 		for (i = 0; i <= 20; i++) {
+#else /*ODM_HQ_EDIT*/
+		for (i = 0; i <= 27; i++) {
+#endif /*ODM_HQ_EDIT*/
 			if (Res >= Fg_Temperature_Table[i].TemperatureR) {
 				RES2 = Fg_Temperature_Table[i].TemperatureR;
 				TMP2 = Fg_Temperature_Table[i].BatteryTemp;
@@ -1018,7 +1258,7 @@ unsigned int TempToBattVolt(int temp, int update)
 	int fg_r_value = fg_cust_data.com_r_fg_value;
 	int fg_meter_res_value = 0;
 
-	if (NO_BAT_TEMP_COMPENSATE == 0)
+	if (gm.no_bat_temp_compensate == 0)
 		fg_meter_res_value = fg_cust_data.com_fg_meter_resistance;
 	else
 		fg_meter_res_value = 0;
@@ -1121,7 +1361,7 @@ int BattVoltToTemp(int dwVolt, int volt_cali)
 		vbif28, volt_cali);
 	return sBaTTMP;
 }
-
+extern int force_temp;
 int force_get_tbat_internal(bool update)
 {
 	int bat_temperature_volt = 0;
@@ -1158,7 +1398,7 @@ int force_get_tbat_internal(bool update)
 
 		if (bat_temperature_volt != 0) {
 			fg_r_value = fg_cust_data.com_r_fg_value;
-			if (NO_BAT_TEMP_COMPENSATE == 0)
+			if (gm.no_bat_temp_compensate == 0)
 				fg_meter_res_value =
 					fg_cust_data.com_fg_meter_resistance;
 			else
@@ -1205,7 +1445,7 @@ int force_get_tbat_internal(bool update)
 		bat_temperature_volt_temp, bat_temperature_volt,
 		fg_current_state, fg_current_temp,
 		fg_r_value, bat_temperature_val,
-		fg_meter_res_value, fg_r_value, NO_BAT_TEMP_COMPENSATE);
+		fg_meter_res_value, fg_r_value, gm.no_bat_temp_compensate);
 
 		if (pre_bat_temperature_val2 == 0) {
 			pre_bat_temperature_volt_temp =
@@ -1238,8 +1478,8 @@ int force_get_tbat_internal(bool update)
 					pre_fg_current_temp,
 					pre_fg_r_value,
 					pre_bat_temperature_val2);
-				/*pmic_auxadc_debug(1);*/
-				WARN_ON(1);
+
+				/* WARN_ON(1); */
 			}
 
 			pre_bat_temperature_volt_temp =
@@ -1277,7 +1517,6 @@ int force_get_tbat(bool update)
 			__func__);
 		return 25;
 	}
-
 #if defined(FIXED_TBAT_25)
 	bm_debug("[%s] fixed TBAT=25 t\n",
 	__func__);
@@ -1286,8 +1525,14 @@ int force_get_tbat(bool update)
 
 	bat_temperature_val = force_get_tbat_internal(update);
 
+#ifndef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basic 2019.04.10 add more Rntc to temp */
 	while (counts < 5 && bat_temperature_val >= 60) {
 		bm_err("[%s]over60 count=%d, bat_temp=%d\n",
+#else /*ODM_HQ_EDIT*/
+	while (counts < 5 && bat_temperature_val >= 95) {
+		bm_err("[%s]over95 count=%d, bat_temp=%d\n",
+#endif /*ODM_HQ_EDIT*/
 			__func__,
 			counts, bat_temperature_val);
 		bat_temperature_val = force_get_tbat_internal(true);
@@ -1322,8 +1567,12 @@ int force_get_tbat(bool update)
 
 		return DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG;
 	}
-
 	gm.ntc_disable_nafg = false;
+#ifdef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basic 2018.12.25 add battery update and force temo function*/
+	if (force_temp != 0)
+		bat_temperature_val = force_temp;
+#endif /*ODM_HQ_EDIT*/
 	return bat_temperature_val;
 #endif
 }
@@ -1418,7 +1667,19 @@ static void nl_data_handler(struct sk_buff *skb)
 
 	size = fgd_msg->fgd_ret_data_len + FGD_NL_MSG_T_HDR_LEN;
 
-	fgd_ret_msg = vmalloc(size);
+	if (size > (PAGE_SIZE << 1))
+		fgd_ret_msg = vmalloc(size);
+	else
+		fgd_ret_msg = kmalloc(size, GFP_KERNEL);
+
+	if (fgd_ret_msg == NULL) {
+		if (size > PAGE_SIZE)
+			fgd_ret_msg = vmalloc(size);
+
+		if (fgd_ret_msg == NULL)
+			return;
+	}
+
 	if (!fgd_ret_msg)
 		return;
 
@@ -1427,7 +1688,7 @@ static void nl_data_handler(struct sk_buff *skb)
 	bmd_ctrl_cmd_from_user(data, fgd_ret_msg);
 	nl_send_to_user(pid, seq, fgd_ret_msg);
 
-	vfree(fgd_ret_msg);
+	kvfree(fgd_ret_msg);
 }
 
 int wakeup_fg_algo(unsigned int flow_state)
@@ -1450,7 +1711,19 @@ int wakeup_fg_algo(unsigned int flow_state)
 		struct fgd_nl_msg_t *fgd_msg;
 		int size = FGD_NL_MSG_T_HDR_LEN + sizeof(flow_state);
 
-		fgd_msg = vmalloc(size);
+		if (size > (PAGE_SIZE << 1))
+			fgd_msg = vmalloc(size);
+		else
+			fgd_msg = kmalloc(size, GFP_KERNEL);
+
+		if (fgd_msg == NULL) {
+			if (size > PAGE_SIZE)
+				fgd_msg = vmalloc(size);
+
+			if (fgd_msg == NULL)
+				return -1;
+		}
+
 		if (!fgd_msg) {
 /* bm_err("Error: wakeup_fg_algo() vmalloc fail!!!\n"); */
 			return -1;
@@ -1464,7 +1737,9 @@ int wakeup_fg_algo(unsigned int flow_state)
 		memcpy(fgd_msg->fgd_data, &flow_state, sizeof(flow_state));
 		fgd_msg->fgd_data_len += sizeof(flow_state);
 		nl_send_to_user(gm.g_fgd_pid, 0, fgd_msg);
-		vfree(fgd_msg);
+
+		kvfree(fgd_msg);
+
 		return 0;
 	} else {
 		return -1;
@@ -1491,7 +1766,19 @@ int wakeup_fg_algo_cmd(unsigned int flow_state, int cmd, int para1)
 		struct fgd_nl_msg_t *fgd_msg;
 		int size = FGD_NL_MSG_T_HDR_LEN + sizeof(flow_state);
 
-		fgd_msg = vmalloc(size);
+		if (size > (PAGE_SIZE << 1))
+			fgd_msg = vmalloc(size);
+		else
+			fgd_msg = kmalloc(size, GFP_KERNEL);
+
+		if (fgd_msg == NULL) {
+			if (size > PAGE_SIZE)
+				fgd_msg = vmalloc(size);
+
+			if (fgd_msg == NULL)
+				return -1;
+		}
+
 		if (!fgd_msg) {
 /* bm_err("Error: wakeup_fg_algo() vmalloc fail!!!\n"); */
 			return -1;
@@ -1507,7 +1794,9 @@ int wakeup_fg_algo_cmd(unsigned int flow_state, int cmd, int para1)
 		memcpy(fgd_msg->fgd_data, &flow_state, sizeof(flow_state));
 		fgd_msg->fgd_data_len += sizeof(flow_state);
 		nl_send_to_user(gm.g_fgd_pid, 0, fgd_msg);
-		vfree(fgd_msg);
+
+		kvfree(fgd_msg);
+
 		return 0;
 	} else {
 		return -1;
@@ -2490,6 +2779,37 @@ void exec_BAT_EC(int cmd, int param)
 				cmd, fg_cust_data.record_log);
 		}
 		break;
+	case 789:
+		{
+			int fg_zcv_car_th;
+
+			fg_zcv_car_th = param;
+			gauge_set_zcv_interrupt_en(0);
+			gauge_dev_set_zcv_interrupt_threshold(gm.gdev,
+				fg_zcv_car_th);
+			gauge_set_zcv_interrupt_en(1);
+
+			bm_err(
+				"exe_BAT_EC cmd %d,zcv =%d\n",
+				cmd, param);
+		}
+		break;
+	case 790:
+		{
+			bm_err(
+				"exe_BAT_EC cmd %d,force DLPT shutdown", cmd);
+
+			notify_fg_dlpt_sd();
+		}
+		break;
+	case 791:
+		{
+			gm.enable_tmp_intr_suspend = param;
+			bm_err(
+				"exe_BAT_EC cmd %d,gm.enable_tmp_intr_suspend =%d\n",
+				cmd, param);
+		}
+		break;
 
 	default:
 		bm_err(
@@ -2872,6 +3192,55 @@ static ssize_t store_reset_battery_cycle(
 static DEVICE_ATTR(
 	reset_battery_cycle, 0664,
 	show_reset_battery_cycle, store_reset_battery_cycle);
+
+static ssize_t show_reset_aging_factor(
+	struct device *dev, struct device_attribute *attr, char *buf)
+{
+	bm_trace("[FG] %s : %d\n",
+		__func__,
+		gm.is_reset_aging_factor);
+	return sprintf(buf, "%d\n", gm.is_reset_aging_factor);
+}
+
+static ssize_t store_reset_aging_factor(
+	struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	unsigned long val = 0;
+	int ret;
+
+	bm_err("[%s]\n", __func__);
+	if (buf != NULL && size != 0) {
+		bm_err("[%s] buf is %s\n",
+			__func__, buf);
+		ret = kstrtoul(buf, 10, &val);
+		if (val < 0) {
+			bm_err(
+				"[%s] val is %d ??\n",
+				__func__,
+				(int)val);
+			val = 0;
+		}
+		if (val == 0)
+			gm.is_reset_aging_factor = false;
+		else {
+			gm.is_reset_aging_factor = true;
+			wakeup_fg_algo_cmd(FG_INTR_KERNEL_CMD,
+				FG_KERNEL_CMD_RESET_AGING_FACTOR, 0);
+		}
+		bm_err(
+			"%s=%d\n",
+			__func__,
+			gm.is_reset_aging_factor);
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(
+	reset_aging_factor, 0664,
+	show_reset_aging_factor, store_reset_aging_factor);
+
 
 static ssize_t show_BAT_EC(
 	struct device *dev, struct device_attribute *attr, char *buf)
@@ -3402,6 +3771,183 @@ static const struct file_operations adc_cali_fops = {
 };
 
 
+#ifdef ODM_HQ_EDIT
+char battery_name[20];
+static int proc_app_info_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "battery_name:%s\n",battery_name);
+	return 0;
+}
+
+static int app_info_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_app_info_show, NULL);
+}
+
+static const struct file_operations app_info_proc_fops = {
+	.open  = app_info_proc_open,
+	.read  = seq_read,
+	.write  = NULL,
+	.llseek  = seq_lseek,
+	.release = single_release,
+};
+
+void battery_id_file_probe(void)
+{
+
+	struct proc_dir_entry *app_info;
+	app_info = proc_create("app_info", 0x0644, NULL, &app_info_proc_fops);
+}
+
+extern int IMM_GetOneChannelValue_Cali(int Channel, int *voltage);
+extern int IMM_IsAdcInitReady(void);
+#define BATTERY_ID_CHANNEL_NUM 3
+#define ATL_BATTERY_VOLTAGE_MAX	1100000
+#define ATL_BATTERY_VOLTAGE_MIN	820000
+#define SDI_BATTERY_VOLTAGE_MAX	550000
+#define SDI_BATTERY_VOLTAGE_MIN	300000
+static bool battery_authenticate_check(void)
+{
+	int id_volt;
+	int ret;
+	bool battery_authenticate = false;
+	if (IMM_IsAdcInitReady() == 0) {
+		printk(KERN_ERR "[battery_type_check]: AUXADC is not ready\n");
+		return 0;
+	}
+	ret = IMM_GetOneChannelValue_Cali(BATTERY_ID_CHANNEL_NUM, &id_volt);
+	pr_err("battery id = %d\n",id_volt);
+	if ((id_volt > SDI_BATTERY_VOLTAGE_MIN) &&  (id_volt < SDI_BATTERY_VOLTAGE_MAX))
+	{
+		battery_authenticate = true;
+		strcpy(battery_name, "SDI");
+		pr_err("battery id SDI\n");
+	}
+	else if ((id_volt > ATL_BATTERY_VOLTAGE_MIN) && (id_volt < ATL_BATTERY_VOLTAGE_MAX))
+	{
+		battery_authenticate = true;
+		strcpy(battery_name, "ATL");
+		pr_err("battery id ATL\n");
+	}
+	else
+	{
+		battery_authenticate = false;
+		strcpy(battery_name, "Unknown");
+		pr_err("battery id unknown\n");
+	}
+	return battery_authenticate;
+}
+
+static int meter_fg_30_get_battery_mvolts(void)
+{
+	int ret = 0;
+	/* for calibrate -10mV */
+	ret = battery_get_bat_voltage() ;
+	return ret ;
+}
+
+static int meter_fg_30_get_battery_temperature(void)
+{
+	int ret = 0;
+	ret = battery_get_bat_temperature();
+	return ret*10;
+}
+
+static int meter_fg_30_get_batt_remaining_capacity(void)
+{
+	return -1;
+}
+
+static int meter_fg_30_get_battery_soc(void)
+{
+	int ret = 0;
+
+	ret = battery_get_uisoc();
+	printk("meter_fg_30_get_battery_soc: %d\n", ret);
+	return ret;
+}
+
+static int meter_fg_30_get_average_current(void)
+{
+
+	int ret =0;
+	ret = battery_get_bat_current_mA();
+	return ret;
+}
+
+static int meter_fg_30_get_battery_fcc(void)
+{
+	return fg_table_cust_data.fg_profile[gm.battery_id].q_max* 1000;
+}
+static int meter_fg_30_get_battery_cc(void)
+{
+	return gm.bat_cycle;
+}
+
+static int meter_fg_30_get_battery_id(void)
+{
+       return gm.battery_id;
+}
+
+static int meter_fg_30_get_battery_soh(void)
+{
+	return -1;
+}
+
+bool meter_fg_30_get_battery_authenticate(void)
+{
+
+	return battery_authenticate_check();
+}
+
+static int meter_fg_30_modify_dod0(void)
+{
+	return -1;
+}
+
+static int meter_fg_30_update_soc_smooth_parameter(void)
+{
+	return -1;
+}
+
+bool last_full = false;
+static void meter_fg_30_set_battery_full(bool full)
+{
+	printk("last full = %d, full = %d\n", last_full, full);
+	if(last_full != full) {
+	if (full) {
+		notify_fg_chr_full();
+		last_full = full;
+	}
+	}
+}
+
+static struct oppo_gauge_operations battery_meter_fg_30_gauge = {
+	.get_battery_mvolts			= meter_fg_30_get_battery_mvolts,
+	.get_battery_temperature		= meter_fg_30_get_battery_temperature,
+	.get_batt_remaining_capacity	= meter_fg_30_get_batt_remaining_capacity,
+	.get_battery_soc				= meter_fg_30_get_battery_soc,
+	.get_average_current			= meter_fg_30_get_average_current,
+	.get_battery_fcc				= meter_fg_30_get_battery_fcc,
+	.get_battery_cc				= meter_fg_30_get_battery_cc,
+	.get_battery_soh				= meter_fg_30_get_battery_soh,
+	.get_battery_authenticate		= meter_fg_30_get_battery_authenticate,
+	.set_battery_full				= meter_fg_30_set_battery_full,
+	.get_prev_battery_mvolts		= meter_fg_30_get_battery_mvolts,
+	.get_prev_battery_temperature	= meter_fg_30_get_battery_temperature,
+	.get_prev_battery_soc			= meter_fg_30_get_battery_soc,
+	.get_prev_average_current		= meter_fg_30_get_average_current,
+	.get_prev_batt_remaining_capacity	= meter_fg_30_get_batt_remaining_capacity,
+	.get_battery_mvolts_2cell_max		= meter_fg_30_get_battery_mvolts,
+	.get_battery_mvolts_2cell_min		= meter_fg_30_get_battery_mvolts,
+	.get_prev_battery_mvolts_2cell_max	= meter_fg_30_get_battery_mvolts,
+	.get_prev_battery_mvolts_2cell_min	= meter_fg_30_get_battery_mvolts,
+	.update_battery_dod0				= meter_fg_30_modify_dod0,
+	.update_soc_smooth_parameter		= meter_fg_30_update_soc_smooth_parameter,
+	.get_battery_id                         = meter_fg_30_get_battery_id,
+};
+
+#endif /*ODM_HQ_EDIT*/
 /*************************************/
 static struct wakeup_source battery_lock;
 static int __init battery_probe(struct platform_device *dev)
@@ -3446,6 +3992,7 @@ static int __init battery_probe(struct platform_device *dev)
 	mtk_battery_init(dev);
 
 	/* Power supply class */
+#if 0
 #if !defined(CONFIG_MTK_DISABLE_GAUGE)
 	battery_main.psy =
 		power_supply_register(
@@ -3456,6 +4003,7 @@ static int __init battery_probe(struct platform_device *dev)
 		return ret;
 	}
 	bm_err("[BAT_probe] power_supply_register Battery Success !!\n");
+#endif
 #endif
 	ret = device_create_file(&(dev->dev), &dev_attr_Battery_Temperature);
 	ret = device_create_file(&(dev->dev), &dev_attr_UI_SOC);
@@ -3485,6 +4033,8 @@ static int __init battery_probe(struct platform_device *dev)
 		&dev_attr_shutdown_condition_enable);
 	ret_device_file = device_create_file(&(dev->dev),
 		&dev_attr_reset_battery_cycle);
+	ret_device_file = device_create_file(&(dev->dev),
+		&dev_attr_reset_aging_factor);
 
 	if (of_scan_flat_dt(fb_early_init_dt_get_chosen, NULL) > 0)
 		fg_swocv_v =
@@ -3563,6 +4113,10 @@ static int __init battery_probe(struct platform_device *dev)
 	}
 
 	battery_debug_init();
+#ifdef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basic 2018.11.29 add battery name file node */
+	battery_id_file_probe();
+#endif /*ODM_HQ_EDIT*/
 
 	__pm_relax(&battery_lock);
 
@@ -3603,13 +4157,18 @@ void battery_shutdown(struct platform_device *dev)
 
 static int battery_suspend(struct platform_device *dev, pm_message_t state)
 {
-	bm_err("******** %s!! iavg=%d ***GM3 disable:%d %d %d %d***\n",
+	bm_err("******** %s!! iavg=%d ***GM3 disable:%d %d %d %d tmp_intr:%d***\n",
 		__func__,
 		gm.hw_status.iavg_intr_flag,
 		gm.disableGM30,
 		fg_cust_data.disable_nafg,
 		gm.ntc_disable_nafg,
-		gm.cmd_disable_nafg);
+		gm.cmd_disable_nafg,
+		gm.enable_tmp_intr_suspend);
+
+	if (gm.enable_tmp_intr_suspend == 0)
+		enable_bat_temp_det(0);
+
 	if (gauge_get_hw_version() >= GAUGE_HW_V2000
 		&& gm.hw_status.iavg_intr_flag == 1) {
 		pmic_enable_interrupt(FG_IAVG_H_NO, 0, "GM30");
@@ -3639,6 +4198,9 @@ static int battery_resume(struct platform_device *dev)
 	get_monotonic_boottime(&gm.last_nafg_update_time);
 
 	fg_update_sw_iavg();
+
+	enable_bat_temp_det(1);
+
 	return 0;
 }
 
@@ -3677,7 +4239,8 @@ static int __init battery_init(void)
 	};
 
 	int ret;
-
+	struct oppo_gauge_chip *chip = NULL;
+	pr_err("dhx battery_init\n");
 	gm.daemo_nl_sk = netlink_kernel_create(&init_net, NETLINK_FGD, &cfg);
 	bm_err("netlink_kernel_create protol= %d\n", NETLINK_FGD);
 
@@ -3687,6 +4250,14 @@ static int __init battery_init(void)
 	}
 	bm_err("netlink_kernel_create ok\n");
 
+	chip = (struct oppo_gauge_chip*) kzalloc(sizeof(struct oppo_gauge_chip),
+				GFP_KERNEL);
+	if (!chip) {
+		pr_err("oppo_gauge_chip devm_kzalloc failed.\n");
+		return -ENOMEM;
+	}
+	chip->gauge_ops = &battery_meter_fg_30_gauge;
+	oppo_gauge_init(chip);
 #ifdef CONFIG_OF
 	/* register battery_device by DTS */
 #else
