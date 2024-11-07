@@ -228,6 +228,14 @@ unsigned int cpufreq_generic_get(unsigned int cpu)
 }
 EXPORT_SYMBOL_GPL(cpufreq_generic_get);
 
+#ifdef VENDOR_EDIT
+struct list_head *get_cpufreq_policy_list(void)
+{
+    return &cpufreq_policy_list;
+}
+EXPORT_SYMBOL(get_cpufreq_policy_list);
+#endif /* VENDOR_EDIT */
+
 /**
  * cpufreq_cpu_get: returns policy for a cpu and marks it busy.
  *
@@ -1180,12 +1188,17 @@ static int cpufreq_init_policy(struct cpufreq_policy *policy)
 	/* Update governor of new_policy to the governor used before hotplug */
 	gov = find_governor(policy->last_governor);
 	if (gov) {
-		pr_debug("Restoring governor %s for cpu %d\n",
+		pr_info("@@!Restoring governor %s for cpu %d\n",
 				policy->governor->name, policy->cpu);
 	} else {
 		gov = cpufreq_default_governor();
-		if (!gov)
+		pr_info("@@!Default governor %s for cpu %d\n",
+				gov->name, policy->cpu);
+
+		if (!gov) {
+			pr_info("@@!NO governor\n");
 			return -ENODATA;
+		}
 	}
 
 	new_policy.governor = gov;
