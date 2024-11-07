@@ -527,8 +527,10 @@ static void tpd_create_attributes(struct device *dev, struct tpd_attrs *attrs)
 {
 	int num = attrs->num;
 
-	for (; num > 0;)
-		device_create_file(dev, attrs->attr[--num]);
+	for (; num > 0;) {
+		if (device_create_file(dev, attrs->attr[--num]))
+			pr_info("mtk_tpd: tpd create attributes file failed\n");
+	}
 }
 
 /* touch panel probe */
@@ -544,6 +546,8 @@ static int tpd_probe(struct platform_device *pdev)
 #endif
 
 	TPD_DMESG("enter %s, %d\n", __func__, __LINE__);
+
+	TPD_DMESG("[TP] saved_command_line = %s \n", saved_command_line);
 
 	if (misc_register(&tpd_misc_device))
 		pr_info("mtk_tpd: tpd_misc_device register failed\n");
@@ -636,13 +640,19 @@ static int tpd_probe(struct platform_device *pdev)
 	for (i = 1; i < TP_DRV_MAX_COUNT; i++) {
 		/* add tpd driver into list */
 		if (tpd_driver_list[i].tpd_device_name != NULL) {
-			tpd_driver_list[i].tpd_local_init();
-			/* msleep(1); */
-			if (tpd_load_status == 1) {
-				TPD_DMESG("tpd_probe, tpd_driver_name=%s\n",
+			#ifdef ODM_WT_EDIT
+			//zhenzhenwu@ODM.BSP.TP  2020/02/03 modify for bring up himax TP
+			if(strstr(saved_command_line, "hx83102d_hdp_dsi_vdo_hlt"))
+			#endif
+			{
+			    tpd_driver_list[i].tpd_local_init();
+			    /* msleep(1); */
+			    if (tpd_load_status == 1) {
+				    TPD_DMESG("tpd_probe, tpd_driver_name=%s\n",
 					  tpd_driver_list[i].tpd_device_name);
-				g_tpd_drv = &tpd_driver_list[i];
-				break;
+				    g_tpd_drv = &tpd_driver_list[i];
+				    break;
+			    }
 			}
 		}
 	}
