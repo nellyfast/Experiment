@@ -46,6 +46,15 @@
 #include <mt-plat/met_drv.h>
 #endif
 
+#ifdef VENDOR_EDIT
+/*
+* Ling.Guo@PSW.MM.Display.LCD.Stability, 2018/11/12,
+* add display feature interface
+*/
+#include <mt-plat/mtk_boot_common.h>
+extern unsigned long silence_mode;
+#endif /*VENDOR_EDIT*/
+
 /* for LED&Backlight bringup, define the dummy API */
 #ifndef CONFIG_MTK_PMIC_NEW_ARCH
 u16 pmic_set_register_value(u32 flagname, u32 val)
@@ -810,6 +819,23 @@ int mt_mt65xx_led_set_cust(struct cust_mt65xx_led *cust, int level)
 	unsigned int BacklightLevelSupport =
 	    Cust_GetBacklightLevelSupport_byPWM();
 
+	#ifdef VENDOR_EDIT
+	/*
+	* Ling.Guo@PSW.MM.Display.LCD.Stability, 2018/11/12,
+	* add display feature interface
+	*/
+	#ifdef OPPO_CTTEST_FLAG
+	if (level > 2) {
+		level = (level * 3) / 4;
+	}
+	#endif
+
+	if (silence_mode) {
+		printk("%s silence_mode is %ld, set backlight to 0\n",__func__, silence_mode);
+		level = 0;
+	}
+	#endif /*VENDOR_EDIT*/
+
 	switch (cust->mode) {
 
 	case MT65XX_LED_MODE_PWM:
@@ -901,6 +927,12 @@ void mt_mt65xx_led_work(struct work_struct *work)
 	mutex_unlock(&leds_mutex);
 }
 
+#ifdef ODM_WT_EDIT
+//Zhenzhen.Wu@ODM_WT.MM.Display.LCD, 2019/12/15, add LCD dimming control
+extern int primary_display_set_dimming_mode(unsigned int level);
+int set_dimming =1;
+#endif
+
 void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 {
 	struct mt65xx_led_data *led_data =
@@ -910,6 +942,14 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 
 #ifdef CONFIG_MTK_AAL_SUPPORT
 	if (led_data->level != level) {
+		#ifdef ODM_WT_EDIT
+		//Zhenzhen.Wu@ODM_WT.MM.Display.LCD, 2019/12/15, add LCD dimming control
+		if((led_data->level == 0) && (level > 0))
+			set_dimming = 1;
+		else
+			set_dimming = 0;
+		#endif
+
 		led_data->level = level;
 		if (strcmp(led_data->cust.name, "lcd-backlight") != 0) {
 			LEDS_DEBUG("Set NLED directly %d at time %lu\n",
@@ -925,6 +965,12 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 				    255;
 			}
 			backlight_debug_log(led_data->level, level);
+
+			#ifndef VENDOR_EDIT
+			/*
+			Ling.Guo@PSW.MultiMedia.Display.LCD.Machine, 2018/11/09,
+			modify for multibits backlight.
+			*/
 			disp_pq_notify_backlight_changed((((1 <<
 					MT_LED_INTERNAL_LEVEL_BIT_CNT)
 							    - 1) * level +
@@ -933,6 +979,20 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 					MT_LED_INTERNAL_LEVEL_BIT_CNT)
 							    - 1) * level +
 							   127) / 255);
+			#else
+			if (silence_mode) {
+				printk("%s silence_mode is %ld, set backlight to 0\n",__func__, silence_mode);
+				level = 0;
+			}
+			disp_aal_notify_backlight_changed(level);
+
+			#ifdef ODM_WT_EDIT
+			//Zhenzhen.Wu@ODM_WT.MM.Display.LCD, 2019/12/15, add LCD dimming control
+			if(set_dimming)
+				primary_display_set_dimming_mode(1);
+			#endif
+
+			#endif
 		}
 	}
 #else

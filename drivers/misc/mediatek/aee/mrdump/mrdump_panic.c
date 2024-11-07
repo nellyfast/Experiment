@@ -23,9 +23,6 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <mrdump.h>
-#ifdef CONFIG_MTK_RAM_CONSOLE
-#include <mt-plat/mtk_ram_console.h>
-#endif
 #include <linux/reboot.h>
 #include "mrdump_panic.h"
 #ifdef CONFIG_MTK_WATCHDOG
@@ -140,14 +137,39 @@ void ipanic_recursive_ke(struct pt_regs *regs, struct pt_regs *excp_regs,
 	}
 	mrdump_mini_ke_cpu_regs(excp_regs);
 	mrdump_mini_per_cpu_regs(cpu, regs, current);
-	dis_D_inner_fL1L2();
+	dis_D_inner_flush_all();
 	aee_exception_reboot();
 }
 EXPORT_SYMBOL(ipanic_recursive_ke);
 
+#ifdef VENDOR_EDIT
+#ifdef HANG_OPPO_ALL
+//Kun.Hu@PSW.TECH.RELIABILTY, 2019/03/03, Add for project phoenix
+extern void deal_fatal_err(void);
+extern int kernel_panic_happened;
+extern int hwt_happened;
+#endif /* HANG_OPPO_ALL */
+#endif /* VENDOR_EDIT */
+
 int mrdump_common_die(int fiq_step, int reboot_reason, const char *msg,
 		      struct pt_regs *regs)
 {
+#ifdef VENDOR_EDIT
+#ifdef HANG_OPPO_ALL
+	//Kun.Hu@PSW.TECH.RELIABILTY, 2019/03/03, Add for project phoenix
+	if((AEE_REBOOT_MODE_KERNEL_OOPS == reboot_reason || AEE_REBOOT_MODE_KERNEL_PANIC == reboot_reason)
+		&& !kernel_panic_happened)
+	{
+		kernel_panic_happened = 1;
+		deal_fatal_err();
+	}
+	else if (AEE_REBOOT_MODE_WDT == reboot_reason && !hwt_happened)
+	{
+		hwt_happened = 1;
+		deal_fatal_err();
+	}
+#endif /* HANG_OPPO_ALL */
+#endif /* VENDOR_EDIT */
 	bust_spinlocks(1);
 	aee_disable_api();
 
@@ -168,14 +190,14 @@ int mrdump_common_die(int fiq_step, int reboot_reason, const char *msg,
 		__show_regs(regs);
 		dump_stack();
 		break;
-#ifndef CONFIG_DEBUG_BUGVERBOSE
 	case AEE_REBOOT_MODE_KERNEL_PANIC:
 #ifdef CONFIG_MTK_RAM_CONSOLE
 		aee_rr_rec_exp_type(AEE_EXP_TYPE_KE);
 #endif
+#ifndef CONFIG_DEBUG_BUGVERBOSE
 		dump_stack();
-		break;
 #endif
+		break;
 	case AEE_REBOOT_MODE_HANG_DETECT:
 #ifdef CONFIG_MTK_RAM_CONSOLE
 		aee_rr_rec_exp_type(AEE_EXP_TYPE_HANG_DETECT);
@@ -187,7 +209,7 @@ int mrdump_common_die(int fiq_step, int reboot_reason, const char *msg,
 	}
 
 	mrdump_mini_ke_cpu_regs(regs);
-	dis_D_inner_fL1L2();
+	dis_D_inner_flush_all();
 	console_unlock();
 	aee_exception_reboot();
 	return NOTIFY_DONE;
@@ -393,10 +415,6 @@ int aee_in_nested_panic(void)
 }
 static inline void aee_rec_step_nested_panic(int step)
 {
-}
-__weak int aee_rr_curr_fiq_step(void)
-{
-	return -1;
 }
 #endif
 

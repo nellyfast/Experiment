@@ -87,7 +87,7 @@ static void mtk_memcfg_show_layout_region_kernel(struct seq_file *m,
 		size);
 }
 
-#define MAX_RESERVED_COUNT 30
+#define MAX_RESERVED_COUNT 64
 static int mtk_memcfg_memory_layout_show(struct seq_file *m, void *v)
 {
 	int i, ret = 0;
@@ -119,9 +119,8 @@ static int mtk_memcfg_memory_layout_show(struct seq_file *m, void *v)
 	}
 
 	count = memcfg_remove_free_mem(reserved_mem, count);
-	if (count <= 0 || count > MAX_RESERVED_REGIONS) {
-		seq_printf(m, "count(%d) over limit after parsing!\n",
-				count);
+	if (count <= 0 || count > MAX_RESERVED_COUNT) {
+		pr_info("count(%d) over limit after parsing!\n", count);
 		kfree(reserved_mem);
 		goto debug_info;
 	}
@@ -221,7 +220,12 @@ static int mtk_memcfg_memory_layout_open(struct inode *inode, struct file *file)
 	return single_open(file, mtk_memcfg_memory_layout_show, NULL);
 }
 
-#ifdef CONFIG_MTK_ENG_BUILD
+//#ifdef VENDOR_EDIT
+//Wen.Luo@BSP.Kernel.Stability, 2018/11/28, Enable slabtrace for ageing test
+#ifdef CONFIG_SLUB_DEBUG
+//#else
+//#ifdef CONFIG_MTK_ENG_BUILD
+//#endif
 /* memblock reserve information */
 static int mtk_memcfg_memblock_reserved_show(struct seq_file *m, void *v)
 {
@@ -611,7 +615,12 @@ static int __init mtk_memcfg_late_init(void)
 
 		mtk_memcfg_reserve_info_init(mtk_memcfg_dir);
 
-#ifdef CONFIG_MTK_ENG_BUILD
+//#ifdef VENDOR_EDIT
+//Wen.Luo@BSP.Kernel.Stability, 2018/11/28, Enable slabtrace for ageing test
+#ifdef CONFIG_SLUB_DEBUG
+//#else
+//#ifdef CONFIG_MTK_ENG_BUILD
+//#endif
 		/* memblock reserved */
 		entry = proc_create("memblock_reserved", 0644,
 				mtk_memcfg_dir,

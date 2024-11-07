@@ -1156,7 +1156,8 @@ static int mt6370_get_ieoc(struct mt6370_pmu_charger_data *chg_data, u32 *ieoc)
 	return ret;
 }
 
-static int mt6370_get_mivr(struct mt6370_pmu_charger_data *chg_data, u32 *mivr)
+static int __mt6370_get_mivr(struct mt6370_pmu_charger_data *chg_data,
+	u32 *mivr)
 {
 	int ret = 0;
 	u8 reg_mivr = 0;
@@ -1369,7 +1370,7 @@ static int __mt6370_run_aicl(struct mt6370_pmu_charger_data *chg_data)
 		goto out;
 	}
 
-	ret = mt6370_get_mivr(chg_data, &mivr);
+	ret = __mt6370_get_mivr(chg_data, &mivr);
 	if (ret < 0)
 		goto out;
 
@@ -1808,7 +1809,7 @@ static int mt6370_is_power_path_enable(struct charger_device *chg_dev, bool *en)
 		dev_get_drvdata(&chg_dev->dev);
 	u32 mivr = 0;
 
-	ret = mt6370_get_mivr(chg_data, &mivr);
+	ret = __mt6370_get_mivr(chg_data, &mivr);
 	*en = (mivr == MT6370_MIVR_MAX ? false : true);
 
 	return ret;
@@ -1879,6 +1880,30 @@ static int mt6370_set_aicr(struct charger_device *chg_dev, u32 uA)
 	mutex_lock(&chg_data->aicr_access_lock);
 	ret = __mt6370_set_aicr(chg_data, uA);
 	mutex_unlock(&chg_data->aicr_access_lock);
+
+	return ret;
+}
+
+static int mt6370_get_mivr_state(struct charger_device *chg_dev, bool *in_loop)
+{
+	int ret = 0;
+	struct mt6370_pmu_charger_data *chg_data =
+		dev_get_drvdata(&chg_dev->dev);
+
+	ret = mt6370_pmu_reg_read(chg_data->chip, MT6370_PMU_REG_CHGSTAT1);
+	if (ret < 0)
+		return ret;
+	*in_loop = (ret & MT6370_MASK_MIVR_STAT) >> MT6370_SHIFT_MIVR_STAT;
+	return 0;
+}
+
+static int mt6370_get_mivr(struct charger_device *chg_dev, u32 *mivr)
+{
+	int ret = 0;
+	struct mt6370_pmu_charger_data *chg_data =
+		dev_get_drvdata(&chg_dev->dev);
+
+	ret = __mt6370_get_mivr(chg_data, mivr);
 
 	return ret;
 }
@@ -2609,7 +2634,7 @@ static int mt6370_dump_register(struct charger_device *chg_dev)
 	ret = mt6370_get_aicr(chg_dev, &aicr);
 	ret = mt6370_get_charging_status(chg_data, &chg_status);
 	ret = mt6370_get_ieoc(chg_data, &ieoc);
-	ret = mt6370_get_mivr(chg_data, &mivr);
+	ret = mt6370_get_mivr(chg_dev, &mivr);
 	ret = mt6370_get_cv(chg_dev, &cv);
 	ret = mt6370_is_charging_enable(chg_data, &chg_en);
 	ret = mt6370_get_adc(chg_data, MT6370_ADC_VSYS, &adc_vsys);
@@ -3718,6 +3743,8 @@ static struct charger_ops mt6370_chg_ops = {
 	.set_constant_voltage = mt6370_set_cv,
 	.kick_wdt = mt6370_kick_wdt,
 	.set_mivr = mt6370_set_mivr,
+	.get_mivr = mt6370_get_mivr,
+	.get_mivr_state = mt6370_get_mivr_state,
 	.is_charging_done = mt6370_is_charging_done,
 	.get_zcv = mt6370_get_zcv,
 	.run_aicl = mt6370_run_aicl,
@@ -3825,6 +3852,198 @@ static ssize_t shipping_mode_store(struct device *dev,
 }
 
 static const DEVICE_ATTR_WO(shipping_mode);
+
+#ifdef VENDOR_EDIT
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/11/09, sjc Add for charging */
+bool mt6360_get_vbus_status(void)
+{
+	bool vbus_rising = false;
+#if 0
+	if (oppompci) {
+		if (atomic_read(&oppompci->suspended) == 0)
+			mt6360_get_chrdet_ext_stat(oppompci, &vbus_rising);
+	} else {
+		printk(KERN_ERR "%s NULL\n", __func__);
+	}
+#endif
+	return vbus_rising;
+}
+EXPORT_SYMBOL(mt6360_get_vbus_status);
+
+int mt6360_get_vbus_rising(void)
+{
+	bool vbus_rising = false;
+	int ret = 0;
+#if 0
+	if (oppompci) {
+		if (atomic_read(&oppompci->suspended) == 0)
+			ret = mt6360_get_chrdet_ext_stat(oppompci, &vbus_rising);
+		else
+			ret = -1;
+	} else {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return 0;
+	}
+#endif
+	return (ret < 0) ? ret : (vbus_rising ? 1 : 0);
+}
+EXPORT_SYMBOL(mt6360_get_vbus_rising);
+
+int mt6360_chg_enable(bool en)
+{
+	int rc = 0;
+#if 0
+	if (oppompci) {
+		if (atomic_read(&oppompci->suspended) == 0)
+			rc = mt6360_pmu_reg_update_bits(oppompci->mpi, MT6360_PMU_CHG_CTRL2,
+					MT6360_MASK_CHG_EN, en ? 0xff : 0);
+		else
+			printk(KERN_ERR "%s in suspended\n", __func__);
+	} else {
+		printk(KERN_ERR "%s NULL\n", __func__);
+	}
+#endif
+	return rc;
+}
+EXPORT_SYMBOL(mt6360_chg_enable);
+
+int mt6360_check_charging_enable(void)
+{
+	bool chg_enable = false;
+#if 0
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return 0;
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return 0;
+	mt6360_is_charger_enabled(oppompci, &chg_enable);
+#endif
+	return chg_enable ? 1 : 0;
+}
+EXPORT_SYMBOL(mt6360_check_charging_enable);
+
+int mt6360_suspend_charger(bool suspend)
+{
+#if 0
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return -1;
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return -1;
+	return mt6360_pmu_reg_update_bits(oppompci->mpi, MT6360_PMU_CHG_CTRL1,
+			MT6360_MASK_FORCE_SLEEP, suspend ? 0xff : 0);
+#endif
+return -1;
+}
+EXPORT_SYMBOL(mt6360_suspend_charger);
+
+int mt6360_set_rechg_voltage(int rechg_mv)
+{
+#if 0
+	unsigned char reg = 0;
+
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return -1;
+	}
+	if (rechg_mv < 150) {
+		reg = 0x0;//100mV
+	} else if (rechg_mv < 200) {
+		reg = 0x1;//150mV
+	} else if (rechg_mv < 250) {
+		reg = 0x2;//200mV
+	} else {
+		reg = 0x3;//250mV
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return -1;
+	return mt6360_pmu_reg_update_bits(oppompci->mpi,
+			MT6360_PMU_CHG_CTRL11, 0x03, reg);
+#endif
+return -1;
+}
+EXPORT_SYMBOL(mt6360_set_rechg_voltage);
+
+int mt6360_reset_charger(void)
+{
+#if 0
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return -1;
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return -1;
+	return mt6360_pmu_reg_update_bits(oppompci->mpi,
+			MT6360_PMU_RST1, 0x40, 0x40);
+#endif
+return -1;
+}
+EXPORT_SYMBOL(mt6360_reset_charger);
+
+int mt6360_set_chging_term_disable(bool disable)
+{
+#if 0
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return -1;
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return -1;
+	return mt6360_pmu_reg_update_bits(oppompci->mpi,
+			MT6360_PMU_CHG_CTRL9, 0x08, disable ? 0x0 : 0x08);
+#endif
+return -1;
+}
+EXPORT_SYMBOL(mt6360_set_chging_term_disable);
+
+int mt6360_aicl_enable(bool enable)
+{
+#if 0
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return -1;
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return -1;
+	return mt6360_pmu_reg_update_bits(oppompci->mpi,
+			MT6360_PMU_CHG_CTRL6, 0x1, enable ? 1 : 0);
+#endif
+return -1;
+}
+EXPORT_SYMBOL(mt6360_aicl_enable);
+
+int mt6360_chg_enable_wdt(bool enable)
+{
+#if 0
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return -1;
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return -1;
+	return mt6360_enable_wdt(oppompci, enable);
+#endif
+return -1;
+}
+EXPORT_SYMBOL(mt6360_chg_enable_wdt);
+
+int mt6360_set_register(unsigned char addr, unsigned char mask, unsigned char data)
+{
+#if 0
+	if (!oppompci) {
+		printk(KERN_ERR "%s NULL\n", __func__);
+		return -1;
+	}
+	if (atomic_read(&oppompci->suspended) == 1)
+		return -1;
+	return mt6360_pmu_reg_update_bits(oppompci->mpi, addr, mask, data);
+#endif
+return -1;
+}
+EXPORT_SYMBOL(mt6360_set_register);
+#endif /* VENDOR_EDIT */
 
 static int mt6370_pmu_charger_probe(struct platform_device *pdev)
 {

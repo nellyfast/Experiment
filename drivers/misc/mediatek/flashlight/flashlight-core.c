@@ -42,6 +42,10 @@
 #ifdef CONFIG_MTK_FLASHLIGHT_DLPT
 #include "mtk_pbm.h" /* DLPT */
 #endif
+#ifdef VENDOR_EDIT
+/*Henry.Chang@Camera.Driver 20181218 add to control flashlight via proc file*/
+#include<linux/proc_fs.h>
+#endif
 
 
 /******************************************************************************
@@ -504,6 +508,140 @@ ssize_t strobe_VDIrq(void)
 	return 0;
 }
 EXPORT_SYMBOL(strobe_VDIrq);
+#ifdef VENDOR_EDIT
+/*Henry.Chang@Camera.Driver 20181218 add to control flashlight via proc file*/
+extern int kdVIOPowerOn( int On);
+static int flashlight_state = 0;
+static ssize_t FL_HW_WRITE( struct file *file, const char __user *buffer, size_t count,
+                                                                     loff_t *data)
+{
+	char regBuf[64] = {'\0'};
+	struct flashlight_dev_arg fl_dev_arg;
+	struct flashlight_dev *fdev;
+
+	u32 u4CopyBufSize = (count < (sizeof(regBuf) - 1)) ? (count) : (sizeof(regBuf) - 1);
+
+	if (copy_from_user(regBuf, buffer, u4CopyBufSize))
+		return -EFAULT;
+
+	pr_err("new_state = %d, old_flashlight_state:%d\n",regBuf[0] - '0',flashlight_state);
+	if(regBuf[0] == '6') {
+		flashlight_state = regBuf[0] - '0';
+		return count;
+	}
+	if (regBuf[0] == '5' && flashlight_state != 1) {
+		flashlight_state = regBuf[0] - '0';
+		return count;
+	}
+
+	if (flashlight_state == regBuf[0] - '0') {
+		pr_err("flash state is same, do not need set flash \n");
+		return count;
+	}
+
+	fdev = flashlight_find_dev_by_full_index(0, 0, 0);
+	if (!fdev) {
+		pr_info("Find no flashlight device\n");
+		return -EFAULT;
+	}
+
+	if (regBuf[0] == '5' && flashlight_state == 1) {
+		flashlight_state = regBuf[0] - '0';
+
+		fl_dev_arg.channel = fdev->dev_id.channel;
+		fl_dev_arg.arg = 0;
+		if (fdev->ops) {
+			/* Henry.Chang@Camera.Driver add for Dual channel flashlight 20190223 */
+			fdev->ops->flashlight_set_driver(1);
+			pr_info("regBuf[0] == '5' set driver:1");
+			fdev->ops->flashlight_ioctl(FLASH_IOC_SET_DUTY, (unsigned long)&fl_dev_arg);
+			fdev->ops->flashlight_ioctl(FLASH_IOC_SET_TIME_OUT_TIME_MS, (unsigned long)&fl_dev_arg);
+		} else {
+			pr_info("Failed with no flashlight ops\n");
+		}
+		kdVIOPowerOn(0);
+		pr_err("sensor is poweron ,need to set flash off\n");
+		return count;
+	}
+
+	if (flashlight_state == 5 && regBuf[0] == '0') {
+		pr_err("camera is open ,not to set flash\n");
+		return count;
+	}
+	if (flashlight_state == 6 && regBuf[0] == '0') {
+		return count;
+	}
+
+	if(regBuf[0] == '0') {
+		flashlight_state = regBuf[0] - '0';
+
+		fl_dev_arg.channel = fdev->dev_id.channel;
+		fl_dev_arg.arg = 0;
+		if (fdev->ops->flashlight_ioctl(FLASH_IOC_SET_ONOFF, (unsigned long)&fl_dev_arg)) {
+			pr_err("Failed to set on/off.\n");
+		} else {
+			pr_info("Failed with no flashlight ops\n");
+		}
+		/* Henry.Chang@Camera.Driver add for Dual channel flashlight 20190223 */
+		if (fdev->ops) {
+			fdev->ops->flashlight_set_driver(0);
+			pr_info("set driver 0");
+		}
+		kdVIOPowerOn(0);
+	} else if (regBuf[0] == '1') {
+		kdVIOPowerOn(1);
+
+		fl_dev_arg.channel = fdev->dev_id.channel;
+		fl_dev_arg.arg = 0;
+		if (fdev->ops) {
+			/* Henry.Chang@Camera.Driver add for Dual channel flashlight 20190223 */
+			fdev->ops->flashlight_set_driver(1);
+			pr_info("regBuf[0] == '1'set driver 1");
+			fdev->ops->flashlight_ioctl(FLASH_IOC_SET_DUTY, (unsigned long)&fl_dev_arg);
+			fdev->ops->flashlight_ioctl(FLASH_IOC_SET_TIME_OUT_TIME_MS, (unsigned long)&fl_dev_arg);
+		} else {
+			pr_info("Failed with no flashlight ops\n");
+			kdVIOPowerOn(0);
+			return -EFAULT;
+		}
+		fl_dev_arg.arg = 1;
+		if (fdev->ops->flashlight_ioctl(FLASH_IOC_SET_ONOFF, (unsigned long)&fl_dev_arg)) {
+			pr_err("Failed to set on/off.\n");
+		}
+	}
+	flashlight_state = regBuf[0] - '0';
+
+	pr_err("flashlight_state=%d\n",flashlight_state);
+
+	return count;
+}
+
+static ssize_t FL_HW_READ(struct file *filp, char __user *buff,
+						size_t len, loff_t *data)
+{
+	char value[2] = {0};
+
+	snprintf(value, sizeof(value), "%d", flashlight_state);
+	return simple_read_from_buffer(buff, len, data, value,1);
+}
+
+static const struct file_operations flashlight_proc_fops = {
+	.owner = THIS_MODULE,
+	.read = FL_HW_READ,
+	.write = FL_HW_WRITE,
+};
+
+static int flash_proc_init(void)
+{
+	int ret=0;
+	struct proc_dir_entry *proc_entry = proc_create_data( "qcom_flash", 0666, NULL,&flashlight_proc_fops, NULL);
+	if (proc_entry == NULL) {
+		ret = -ENOMEM;
+		pr_err("Error! Couldn't create qcom_flash proc entry\n");
+	}
+	return ret;
+}
+#endif /*VENDOR_EDIT*/
 
 
 /******************************************************************************
@@ -605,7 +743,8 @@ static int pt_trigger(void)
 
 	return 0;
 }
-
+#ifndef VENDOR_EDIT
+/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/05/25, Add for pmic invalid at low battery voltage */
 static void pt_low_vol_callback(LOW_BATTERY_LEVEL level)
 {
 	if (level == LOW_BATTERY_LEVEL_0) {
@@ -632,7 +771,7 @@ static void pt_low_bat_callback(BATTERY_PERCENT_LEVEL level)
 		/* unlimited cpu and gpu*/
 	}
 }
-
+#endif
 static void pt_oc_callback(BATTERY_OC_LEVEL level)
 {
 	if (level == BATTERY_OC_LEVEL_0) {
@@ -659,7 +798,6 @@ static long _flashlight_ioctl(
 	int type, ct, part;
 	int ret = 0;
 
-	memset(&fl_arg, 0, sizeof(struct flashlight_user_arg));
 	if (copy_from_user(&fl_arg, (void __user *)arg,
 				sizeof(struct flashlight_user_arg))) {
 		pr_err("Failed copy arguments from user\n");
@@ -673,7 +811,7 @@ static long _flashlight_ioctl(
 			flashlight_get_ct_index(fl_arg.ct_id));
 	mutex_unlock(&fl_mutex);
 	if (!fdev) {
-		pr_info("Find no flashlight device\n");
+		pr_info_ratelimited("Find no flashlight device\n");
 		return -EINVAL;
 	}
 
@@ -816,6 +954,8 @@ static long _flashlight_ioctl(
 		mutex_unlock(&fl_mutex);
 		break;
 
+	case FLASH_IOC_GET_DUTY_NUMBER:
+	case FLASH_IOC_GET_DUTY_CURRENT:
 	case FLASH_IOC_GET_HW_FAULT:
 	case FLASH_IOC_GET_HW_FAULT2:
 		if (fdev->ops) {
@@ -824,7 +964,8 @@ static long _flashlight_ioctl(
 			fl_arg.arg = fl_dev_arg.arg;
 			if (copy_to_user((void __user *)arg, (void *)&fl_arg,
 					sizeof(struct flashlight_user_arg))) {
-				pr_info("Failed to copy hw fault to user\n");
+				pr_info("Failed to copy arg to user cmd:%d\n",
+					_IOC_NR(cmd));
 				return -EFAULT;
 			}
 		} else {
@@ -890,6 +1031,7 @@ static int flashlight_release(struct inode *inode, struct file *file)
 
 		pr_debug("Release(%d,%d,%d)\n", fdev->dev_id.type,
 				fdev->dev_id.ct, fdev->dev_id.part);
+		fl_enable(fdev, 0);
 		fdev->ops->flashlight_release();
 	}
 	mutex_unlock(&fl_mutex);
@@ -988,6 +1130,11 @@ static ssize_t flashlight_strobe_store(struct device *dev,
 	}
 
 	fl_arg.channel = fdev->dev_id.channel;
+	fl_arg.decouple = fdev->dev_id.decouple;
+
+	pr_info("channel:%d decouple:%d\n",
+			fl_arg.channel, fl_arg.decouple);
+
 	if (fdev->ops) {
 		fdev->ops->flashlight_strobe_store(fl_arg);
 		ret = size;
@@ -1075,8 +1222,11 @@ static ssize_t flashlight_pt_store(struct device *dev,
 
 	/* call callback function */
 	pt_strict = strict;
+	#ifndef VENDOR_EDIT
+	/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/05/25, Add for pmic invalid at low battery voltage */
 	pt_low_vol_callback(low_vol);
 	pt_low_bat_callback(low_bat);
+	#endif
 	pt_oc_callback(over_cur);
 #endif
 
@@ -1375,6 +1525,8 @@ unlock:
 }
 static DEVICE_ATTR_RW(flashlight_current);
 
+#ifndef VENDOR_EDIT
+/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/05/25, Add for pmic invalid at low battery voltage */
 /* flashlight fault sysfs */
 static ssize_t flashlight_fault_show(
 		struct device *dev, struct device_attribute *attr, char *buf)
@@ -1526,7 +1678,7 @@ unlock:
 	return ret;
 }
 static DEVICE_ATTR_RW(flashlight_sw_disable);
-
+#endif
 /******************************************************************************
  * Platform device and driver
  *****************************************************************************/
@@ -1635,6 +1787,8 @@ static int flashlight_probe(struct platform_device *dev)
 		pr_err("Failed to create device file(current)\n");
 		goto err_create_current_device_file;
 	}
+	#ifndef VENDOR_EDIT
+	/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/05/25, Add for pmic invalid at low battery voltage */
 	if (device_create_file(flashlight_device, &dev_attr_flashlight_fault)) {
 		pr_info("Failed to create device file(fault)\n");
 		goto err_create_fault_device_file;
@@ -1644,6 +1798,11 @@ static int flashlight_probe(struct platform_device *dev)
 		pr_info("Failed to create device file(sw_disable)\n");
 		goto err_create_sw_disable_device_file;
 	}
+	#endif
+	#ifdef VENDOR_EDIT
+	/*Henry.Chang@Camera.driver, 2018.12.18  add for flashlight */
+	flash_proc_init();
+	#endif /*VENDOR_EDIT*/
 
 	/* init flashlight */
 	fl_init();
@@ -1651,11 +1810,13 @@ static int flashlight_probe(struct platform_device *dev)
 	pr_debug("Probe done\n");
 
 	return 0;
-
+#ifndef VENDOR_EDIT
+/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/05/25, Add for pmic invalid at low battery voltage */
 err_create_sw_disable_device_file:
 	device_remove_file(flashlight_device, &dev_attr_flashlight_sw_disable);
 err_create_fault_device_file:
 	device_remove_file(flashlight_device, &dev_attr_flashlight_fault);
+#endif
 err_create_current_device_file:
 	device_remove_file(flashlight_device, &dev_attr_flashlight_capability);
 err_create_capability_device_file:
@@ -1682,8 +1843,11 @@ static int flashlight_remove(struct platform_device *dev)
 	fl_uninit();
 
 	/* remove device file */
+	#ifndef VENDOR_EDIT
+	/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/05/25, Add for pmic invalid at low battery voltage */
 	device_remove_file(flashlight_device, &dev_attr_flashlight_sw_disable);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_fault);
+	#endif
 	device_remove_file(flashlight_device, &dev_attr_flashlight_current);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_capability);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_charger);
@@ -1758,10 +1922,13 @@ static int __init flashlight_init(void)
 	}
 
 #ifdef CONFIG_MTK_FLASHLIGHT_PT
+	#ifndef VENDOR_EDIT
+	/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2018/05/25, Add for pmic invalid at low battery voltage */
 	register_low_battery_notify(
 			&pt_low_vol_callback, LOW_BATTERY_PRIO_FLASHLIGHT);
 	register_battery_percent_notify(
 			&pt_low_bat_callback, BATTERY_PERCENT_PRIO_FLASHLIGHT);
+	#endif
 	register_battery_oc_notify(
 			&pt_oc_callback, BATTERY_OC_PRIO_FLASHLIGHT);
 #endif

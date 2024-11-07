@@ -175,7 +175,7 @@ static void check_violation(void)
 
 #ifdef CONFIG_MTK_AEE_FEATURE
 	if (wr_vio != 0) {
-		if (is_md_master(master_id)) {
+		if (is_md_master(master_id, domain_id)) {
 			char str[CCCI_STR_MAX_LEN] = "0";
 
 			snprintf(str, CCCI_STR_MAX_LEN,
@@ -187,9 +187,19 @@ static void check_violation(void)
 			pr_info("[MPU] violation trigger MD, ");
 			pr_info("str=%s strlen(str)=%d\n",
 				str, (int)strlen(str));
-		}
+        }
 
-		aee_kernel_exception("EMI MPU",
+		#ifdef VENDOR_EDIT
+		//Deliang.Peng@PSW.MM.Stability.Log, 2019/12/05,
+		//Add for  debug GPU EMI vilolation
+		#ifdef CONFIG_OPPO_SPECIAL_BUILD
+		if(strstr(master_name,"MT6779_M6_AXI_MST_MFG")) {
+			BUG();
+		}
+		#endif
+		#endif /*VENDOR_EDIT*/
+
+		/*aee_kernel_exception("EMI MPU",
 			"%s%s = 0x%x,%s = 0x%x,%s = 0x%x,%s = 0x%llx\n%s%s\n",
 			"EMI MPU violation.\n",
 			"EMI_MPUS", mpus,
@@ -197,7 +207,7 @@ static void check_violation(void)
 			"EMI_MPUT_2ND", mput_2nd,
 			"vio_addr", vio_addr,
 			"CRDISPATCH_KEY:EMI MPU Violation Issue/",
-			master_name);
+			master_name);*/
 	}
 #endif
 
@@ -234,6 +244,58 @@ int emi_mpu_set_protection(struct emi_region_info_t *region_info)
 }
 EXPORT_SYMBOL(emi_mpu_set_protection);
 
+int emi_mpu_set_single_permission(unsigned int region,
+				  unsigned int domain,
+				  unsigned int permission)
+{
+	unsigned int old_apc, new_apc;
+	unsigned long long start, end;
+	int i;
+
+	if (region >= EMI_MPU_REGION_NUM) {
+		pr_debug("[EMI] wrong region %d when calling %s\n",
+		       region, __func__);
+		return -1;
+	}
+
+	if (domain >= EMI_MPU_DOMAIN_NUM) {
+		pr_debug("[EMI] wrong domain %d when calling %s\n",
+		       domain, __func__);
+		return -1;
+	}
+
+	for (i = 0; i < EMI_MPU_DGROUP_NUM; i++) {
+		unsigned int index = domain % 8;
+
+		if ((domain / 8) == i) {
+			old_apc = emi_mpu_smc_read(EMI_MPU_APC(region, i));
+			old_apc &= ~(0x7 << (3 * index));
+			new_apc = old_apc | (permission << (3 * index));
+
+			start = (unsigned long long)emi_mpu_smc_read(
+				EMI_MPU_SA(region)) & 0xffffff;
+
+			end = (unsigned long long)emi_mpu_smc_read(
+				EMI_MPU_EA(region)) & 0xffffff;
+
+			start = (start << EMI_MPU_ALIGN_BITS) + DRAM_OFFSET;
+			start = start >> EMI_MPU_ALIGN_BITS;
+
+			end = (end << EMI_MPU_ALIGN_BITS) + DRAM_OFFSET;
+			end = end >> EMI_MPU_ALIGN_BITS;
+
+			emi_mpu_smc_protect((region << 24) | start,
+					    (i << 24) | end, new_apc);
+		} else {
+			pr_debug("[EMI] don't need to set apc\n");
+			continue;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(emi_mpu_set_single_permission);
+
 int emi_mpu_clear_protection(struct emi_region_info_t *region_info)
 {
 	if (region_info->region > EMI_MPU_REGION_NUM) {
@@ -256,12 +318,12 @@ static ssize_t mpu_show(struct device_driver *driver, char *buf)
 	unsigned long long start, end;
 	static const char *permission[8] = {
 		"No",
-		"S_RW",
-		"S_RW_NS_R",
-		"S_RW_NS_W",
-		"S_R_NS_R",
-		"FORBIDDEN",
-		"S_R_NS_RW",
+		"SRW",
+		"SRW_NSR",
+		"SRW_NSW",
+		"SR_NSR",
+		"FRBD",
+		"SR_NSRW",
 		"NONE"
 	};
 
@@ -269,7 +331,6 @@ static ssize_t mpu_show(struct device_driver *driver, char *buf)
 	i = (*((unsigned int *)(mpu_test_buf + 0x10000)));
 	pr_info("[MPU] trigger violation with read 0x%x\n", i);
 #endif
-
 	for (region = show_region; region < EMI_MPU_REGION_NUM; region++) {
 		start = (unsigned long long)emi_mpu_smc_read(
 			EMI_MPU_SA(region));

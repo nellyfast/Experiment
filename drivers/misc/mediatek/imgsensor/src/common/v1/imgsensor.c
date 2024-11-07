@@ -55,6 +55,9 @@
 #include "imgsensor_clk.h"
 #include "imgsensor.h"
 
+#include "hq_devinfo.h"
+extern cam_buff_t cam_buff;
+
 #define PDAF_DATA_SIZE 4096
 
 #ifdef CONFIG_MTK_SMI_EXT
@@ -577,6 +580,57 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 				psensor_inst->status.arch =
 				    psensor->pfunc->arch;
 #endif
+//Yankun.Zhai@ODM_HQ.Multimedia.Camera.driver, 2018/12/13, Add for bring up start
+                switch(psensor->inst.sensor_idx){
+                case IMGSENSOR_SENSOR_IDX_MAIN:
+#ifdef ODM_WT_EDIT
+                     if((pSensorList[drv_idx].id != HI1336_SENSOR_ID) && \
+                                         (pSensorList[drv_idx].id != HI1336_HOLITECH_SENSOR_ID) && \
+                                         (pSensorList[drv_idx].id != HI1336_HAOZE_SENSOR_ID))
+#else
+                     if((pSensorList[drv_idx].id != OV12A10_SENSOR_ID)&& \
+					 (pSensorList[drv_idx].id != OV12A10_ST_SENSOR_ID))
+#endif
+                     {
+                        continue;
+                     }
+                    break;
+                case IMGSENSOR_SENSOR_IDX_SUB:
+#ifdef ODM_WT_EDIT
+                     if((pSensorList[drv_idx].id != GC5035_HOLITECH_SENSOR_ID) && \
+                                         (pSensorList[drv_idx].id != HI556_LCE_SENSOR_ID) && \
+                                         (pSensorList[drv_idx].id != GC5035_B_SENSOR_ID))
+#else
+                     if((pSensorList[drv_idx].id != S5K4H7YX_HLT_SENSOR_ID))
+#endif
+                     {
+                        continue;
+                     }
+                    break;
+                case IMGSENSOR_SENSOR_IDX_MAIN2:
+#ifdef ODM_WT_EDIT
+                     if((pSensorList[drv_idx].id != GC2375H_CHENGXIANGTONG_SENSOR_ID) && \
+                                         (pSensorList[drv_idx].id != GC02M1B_CXT_SENSOR_ID) && \
+                                         (pSensorList[drv_idx].id != GC2385_SENSOR_ID))
+#else
+                     if((pSensorList[drv_idx].id != GC2375H_SENSOR_ID) && \
+					 (pSensorList[drv_idx].id != GC2385_SENSOR_ID))
+#endif
+                     {
+                        continue;
+                     }
+                    break;
+                case IMGSENSOR_SENSOR_IDX_SUB2:
+                     if((pSensorList[drv_idx].id != GC02M0_SENSOR_ID) && \
+					 (pSensorList[drv_idx].id != GC2385_BW_SENSOR_ID)){
+                        continue;
+                     }
+                    break;
+                default:
+                    pr_warn("unsuported sensor idx: %d",psensor->inst.sensor_idx);
+                    break;
+                }
+//Yankun.Zhai@ODM_HQ.Multimedia.Camera.driver, 2018/12/13, Add for bring up end
 				if (!imgsensor_check_is_alive(psensor)) {
 					pr_info(
 					    "[%s]:[%d][%d][%s]\n",
@@ -584,6 +638,32 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 					    psensor->inst.sensor_idx,
 					    drv_idx,
 					    psensor_inst->psensor_name);
+
+					switch(psensor->inst.sensor_idx){
+						case IMGSENSOR_SENSOR_IDX_MAIN:
+							//cat /proc/devinfo/camera_main
+							strcpy(cam_buff.camera_main_name, psensor_inst->psensor_name);
+							break;
+						case IMGSENSOR_SENSOR_IDX_SUB:
+							//cat /proc/devinfo/camera_front
+							strcpy(cam_buff.camera_front_name, psensor_inst->psensor_name);
+							break;
+						case IMGSENSOR_SENSOR_IDX_MAIN2:
+							/* Tao.Li@Camera.Driver, 2019/12/25, add for [Cola HQ hardwareinfo bringup] */
+							#ifdef ODM_WT_EDIT
+							strcpy(cam_buff.camera_aux_name, psensor_inst->psensor_name);
+							#else
+							//cat /proc/devinfo/camera_micro
+							strcpy(cam_buff.camera_micro_name, psensor_inst->psensor_name);
+							#endif
+							break;
+						case IMGSENSOR_SENSOR_IDX_SUB2:
+							//cat /proc/devinfo/camera_aux
+							strcpy(cam_buff.camera_aux_name, psensor_inst->psensor_name);
+							break;
+						default:
+							break;
+					}
 
 					ret = drv_idx;
 					break;
@@ -1335,6 +1415,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
+	case SENOSR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
 	case SENSOR_FEATURE_GET_PIXEL_RATE:
 	case SENSOR_FEATURE_SET_PDAF:
 	case SENSOR_FEATURE_SET_SHUTTER_FRAME_TIME:
@@ -1398,6 +1479,8 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_SINGLE_FOCUS_MODE:
 	case SENSOR_FEATURE_CANCEL_AF:
 	case SENSOR_FEATURE_CONSTANT_AF:
+	case SENSOR_FEATURE_GET_AE_EFFECTIVE_FRAME_FOR_LE:
+	case SENSOR_FEATURE_GET_AE_FRAME_MODE_FOR_LE:
 	default:
 		break;
 	}
@@ -1413,6 +1496,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
+	case SENOSR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
 	case SENSOR_FEATURE_GET_PIXEL_RATE:
 	{
 		MUINT32 *pValue = NULL;
@@ -1451,6 +1535,8 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_N3D_STREAM_TO_VSYNC_TIME:
 	case SENSOR_FEATURE_GET_PERIOD:
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ:
+	case SENSOR_FEATURE_GET_AE_EFFECTIVE_FRAME_FOR_LE:
+	case SENSOR_FEATURE_GET_AE_FRAME_MODE_FOR_LE:
 	{
 		ret = imgsensor_sensor_feature_control(
 		    psensor,
@@ -2033,11 +2119,18 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
 	case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
+	case SENOSR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
 	case SENSOR_FEATURE_GET_PIXEL_RATE:
+	#ifdef VENDOR_EDIT
+	/*Caohua.Lin@Camera.Driver , 20190102, add for ITS--sensor_fusion*/
+	//case SENOSR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
+	#endif
 	case SENSOR_FEATURE_SET_ISO:
 	case SENSOR_FEATURE_SET_PDAF:
 	case SENSOR_FEATURE_SET_SHUTTER_FRAME_TIME:
 	case SENSOR_FEATURE_SET_PDFOCUS_AREA:
+	case SENSOR_FEATURE_GET_AE_EFFECTIVE_FRAME_FOR_LE:
+	case SENSOR_FEATURE_GET_AE_FRAME_MODE_FOR_LE:
 		if (copy_to_user(
 		    (void __user *) pFeatureCtrl->pFeaturePara,
 		    (void *)pFeaturePara,
@@ -2486,22 +2579,29 @@ CAMERA_HW_Ioctl_EXIT:
 
 static int imgsensor_open(struct inode *a_pstInode, struct file *a_pstFile)
 {
-	if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0)
-		imgsensor_clk_enable_all(&pgimgsensor->clk);
-
-	atomic_inc(&pgimgsensor->imgsensor_open_cnt);
+    mutex_lock(&pgimgsensor->imgsensor_clk_mutex);
+    if (0 == pgimgsensor->imgsensor_open_cnt_mux)
+    {
+        imgsensor_clk_enable_all(&pgimgsensor->clk);
+    }
+    (pgimgsensor->imgsensor_open_cnt_mux)++;
 	pr_info(
-	    "%s %d\n",
+	    "bmj-%s %d\n",
 	    __func__,
-	    atomic_read(&pgimgsensor->imgsensor_open_cnt));
+	    (pgimgsensor->imgsensor_open_cnt_mux));
+
+    mutex_unlock(&pgimgsensor->imgsensor_clk_mutex);
 	return 0;
 }
 
 static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	enum IMGSENSOR_SENSOR_IDX i = IMGSENSOR_SENSOR_IDX_MIN_NUM;
-	atomic_dec(&pgimgsensor->imgsensor_open_cnt);
-	if (atomic_read(&pgimgsensor->imgsensor_open_cnt) == 0) {
+
+    mutex_lock(&pgimgsensor->imgsensor_clk_mutex);
+
+	(pgimgsensor->imgsensor_open_cnt_mux)--;
+	if (0  == pgimgsensor->imgsensor_open_cnt_mux) {
 		imgsensor_clk_disable_all(&pgimgsensor->clk);
 
 		if (pgimgsensor->imgsensor_oc_irq_enable != NULL) {
@@ -2509,15 +2609,17 @@ static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
 				pgimgsensor->imgsensor_oc_irq_enable(i, false);
 		}
 
-		imgsensor_hw_release_all(&pgimgsensor->hw);
+	imgsensor_hw_release_all(&pgimgsensor->hw);
 #ifdef IMGSENSOR_DFS_CTRL_ENABLE
-		imgsensor_dfs_ctrl(DFS_RELEASE, NULL);
+	imgsensor_dfs_ctrl(DFS_RELEASE, NULL);
 #endif
 	}
 	pr_info(
-	    "%s %d\n",
+	    "bmj-%s %d\n",
 	    __func__,
-	    atomic_read(&pgimgsensor->imgsensor_open_cnt));
+	    (pgimgsensor->imgsensor_open_cnt_mux));
+    mutex_unlock(&pgimgsensor->imgsensor_clk_mutex);
+
 	return 0;
 }
 
@@ -2620,8 +2722,8 @@ static int imgsensor_probe(struct platform_device *pdev)
 	imgsensor_hw_init(&pgimgsensor->hw);
 	imgsensor_i2c_create();
 	imgsensor_proc_init();
-
-	atomic_set(&pgimgsensor->imgsensor_open_cnt, 0);
+	mutex_init(&pgimgsensor->imgsensor_clk_mutex);
+	pgimgsensor->imgsensor_open_cnt_mux = 0;
 #ifdef CONFIG_MTK_SMI_EXT
 	mmdvfs_register_mmclk_switch_cb(
 	    mmsys_clk_change_cb,

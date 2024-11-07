@@ -28,6 +28,81 @@ enum LCM_DSI_MODE_CON lcm_dsi_mode;
 #define LCD_HW_ID_STATUS_ERROR  0x03
 
 struct LCM_DRIVER *lcm_driver_list[] = {
+
+#ifdef ODM_WT_EDIT
+#if defined(ILI9881H_HDP_DSI_VDO_TXD)
+	&ili9881h_hdp_dsi_vdo_txd_lcm_drv,
+#endif
+
+#if defined(ILI9881H_HDP_DSI_VDO_HLT)
+	&ili9881h_hdp_dsi_vdo_hlt_lcm_drv,
+#endif
+
+#if defined(ILI9881H_HDP_DSI_VDO_TXD_BOE)
+	&ili9881h_hdp_dsi_vdo_txd_boe_lcm_drv,
+#endif
+
+#if defined(HX83102D_HDP_DSI_VDO_HLT)
+	&hx83102d_hdp_dsi_vdo_hlt_lcm_drv,
+#endif
+
+#if defined(NT36525B_HUAXIAN_HDP_DSI_VDO)
+	&nt36525b_huaxian_hdp_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(VIRTUAL_DSI_VDO_DEFAULT)
+	&virtual_dsi_vdo_default,
+#endif
+
+#endif
+
+//#ifdef VENDOR_EDIT
+/* YongPeng.Yi@PSW.MM.Display.LCD.Machine 2018/10/15, Add for lcm ic tm himax83112a*/
+#if defined(OPPO18531_TM_HIMAX83112A_2_1080P_DSI_VDO)
+	&oppo18531_tm_himax83112a_2_1080p_dsi_vdo_lcm_drv,
+#endif
+/* YongPeng.Yi@PSW.MM.Display.LCD.Machine 2018/10/22, Add for lcm ic dsjm td4330*/
+#if defined(OPPO18151_DSJM_JDI_TD4330_1080P_DSI_CMD)
+	&oppo18151_dsjm_jdi_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+/* YongPeng.Yi@PSW.MM.Display.LCD.Machine 2018/10/25, Add for lcm ic dpt td4330*/
+#if defined(OPPO18151_DPT_JDI_TD4330_1080P_DSI_CMD)
+	&oppo18151_dpt_jdi_td4330_1080p_dsi_cmd_lcm_drv,
+#endif
+
+/* Ling.Guo@PSW.MM.Display.LCD.Machine 2019/01/08, Add for lcm ic samsung*/
+#if defined(OPPO18073_SAMSUNG_AMS641RW01_1080P_DSI_CMD)
+	&oppo18073_samsung_ams641rw01_1080p_dsi_cmd_lcm_drv,
+#endif
+
+/* Ling.Guo@PSW.MM.Display.LCD.Machine 2019/01/08, Add for lcm ic samsung*/
+#if defined(OPPO19011_SAMSUNG_AMS641RW01_1080P_DSI_CMD)
+	&oppo19011_samsung_ams641rw01_1080p_dsi_cmd_lcm_drv,
+#endif
+//#endif /* VENDOR_EDIT */
+
+#ifdef ODM_HQ_EDIT
+/* Sunshiyue@ODM.Multimedia.LCD  2019/9/21 add for LCD bring up */
+#if defined(ILI9881H_HDP_DSI_VDO_INX_AL2350)
+	&ili9881h_hdp_dsi_vdo_inx_al2350_lcm_drv,
+#endif
+
+#if defined(NT36525B_HDP_DSI_VDO_HLT_AL2350)
+	&nt36525b_hdp_dsi_vdo_hlt_al2350_lcm_drv,
+#endif
+
+#if defined(NT36525B_HDP_DSI_VDO_BOE_AL2350)
+	&nt36525b_hdp_dsi_vdo_boe_al2350_lcm_drv,
+#endif
+
+#if defined(ILI9881H_HDP_DSI_VDO_TXD_AL2350)
+	&ili9881h_hdp_dsi_vdo_txd_al2350_lcm_drv,
+#endif
+
+#if defined(NT36525B_HDP_DSI_VDO_DJN_AL2350)
+	&nt36525b_hdp_dsi_vdo_djn_al2350_lcm_drv,
+#endif
+#endif
 #if defined(OTM1284A_HD720_DSI_VDO_TM)
 	&otm1284a_hd720_dsi_vdo_tm_lcm_drv,
 #endif
@@ -929,6 +1004,9 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 #if defined(NT35695_FHD_DSI_CMD_TRULY_NT50358_QHD)
 	&nt35695_fhd_dsi_cmd_truly_nt50358_qhd_lcm_drv,
 #endif
+#if defined(NT35695_FHD_DSI_CMD_TRULY_RT4801)
+	&nt35695_fhd_dsi_cmd_truly_rt4801_lcm_drv,
+#endif
 #if defined(NT35695_FHD_DSI_CMD_TRULY_RT5081)
 	&nt35695_fhd_dsi_cmd_truly_rt5081_lcm_drv,
 #endif
@@ -1025,6 +1103,9 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 #if defined(NT35695_FHD_DSI_VDO_AUO_NT50358_LANESWAP_MT6799)
 	&nt35695_fhd_dsi_vdo_auo_nt50358_laneswap_mt6799_lcm_drv,
 #endif
+#if defined(NT35695B_FHD_DSI_CMD_AUO_RT4801)
+	&nt35695B_fhd_dsi_cmd_auo_rt4801_lcm_drv,
+#endif
 #if defined(NT35695B_FHD_DSI_CMD_AUO_RT5081)
 	&nt35695B_fhd_dsi_cmd_auo_rt5081_lcm_drv,
 #endif
@@ -1119,8 +1200,19 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 	&ili9881h_hdp_dsi_vdo_ilitek_rt5081_19_9_lcm_drv,
 #endif
 
-#if defined(HX83112B_FHDP_DSI_CMD_AUO_RT5081)
-	&hx83112b_fhdp_dsi_cmd_auo_rt5081_lcm_drv,
+#if defined(HX83112B_FHDP_DSI_CMD_AUO_RT4801)
+	&hx83112b_fhdp_dsi_cmd_auo_rt4801_lcm_drv,
+#endif
+
+#if defined(HX83112B_FHDP_DSI_CMD_FHD_AUO_RT4801)
+	&hx83112b_fhdp_dsi_cmd_fhd_auo_rt4801_lcm_drv,
+#endif
+
+#if defined(HX83112B_FHDP_DSI_VDO_AUO_RT4801)
+	&hx83112b_fhdp_dsi_vdo_auo_rt4801_lcm_drv,
+#endif
+#if defined(SOFEG01_FHDPLUS_DSI_CMD_SAMSUNG)
+	&sofeg01_fhdplus_dsi_cmd_samsung_lcm_drv,
 #endif
 };
 

@@ -42,7 +42,11 @@ int als_data_report(int value, int status)
 		err = sensor_input_event(cxt->als_mdev.minor, &event);
 		cxt->is_get_valid_als_data_after_enable = true;
 	}
-	if (value != last_als_report_data) {
+	#ifndef VENDOR_EDIT
+	//YanChen@PSW.BSP.sensor,2018/12/10, remove
+	if (value != last_als_report_data) 
+	#endif
+	{
 		event.handle = ID_LIGHT;
 		event.flush_action = DATA_ACTION;
 		event.word[0] = value;
@@ -112,6 +116,11 @@ int rgbw_flush_report(void)
 	return err;
 }
 
+#ifdef VENDOR_EDIT
+/*zhq@PSW.BSP.Sensor, 2018/11/20, Add for prox report count*/
+extern uint32_t kernel_prox_report_count;
+#endif /*VENDOR_EDIT*/
+
 int ps_data_report(int value, int status)
 {
 	int err = 0;
@@ -122,6 +131,12 @@ int ps_data_report(int value, int status)
 	pr_notice("[ALS/PS]ps_data_report! %d, %d\n", value, status);
 	event.flush_action = DATA_ACTION;
 	event.word[0] = value + 1;
+#ifdef VENDOR_EDIT
+/*zhq@PSW.BSP.Sensor, 2018/11/20, Add for prox report count*/
+	event.word[1] = kernel_prox_report_count;
+
+	pr_notice("[ALS/PS] ps_data_report! value %d, count %d\n", value, event.word[1]);
+#endif /*VENDOR_EDIT*/
 	event.status = status;
 	err = sensor_input_event(alsps_context_obj->ps_mdev.minor, &event);
 	return err;
@@ -505,8 +520,11 @@ static ssize_t als_store_batch(struct device *dev,
 {
 	struct alsps_context *cxt = alsps_context_obj;
 	int handle = 0, flag = 0, err = 0;
+	#ifndef VENDOR_EDIT
+	//Yan.Chen@BSP.PSW.sensor,2019/03/08,add for RGBW rate
 	int64_t delay_ns = 0;
 	int64_t latency_ns = 0;
+	#endif
 
 	pr_debug("als_store_batch %s\n", buf);
 	err = sscanf(buf, "%d,%d,%lld,%lld", &handle, &flag, &cxt->als_delay_ns,
@@ -528,8 +546,14 @@ static ssize_t als_store_batch(struct device *dev,
 		err = als_enable_and_batch();
 #endif
 	} else if (handle == ID_RGBW) {
-		cxt->rgbw_delay_ns = delay_ns;
-		cxt->rgbw_latency_ns = latency_ns;
+               #ifdef VENDOR_EDIT
+               //Yan.Chen@BSP.PSW.sensor,2019/03/08,add for RGBW rate
+               cxt->rgbw_delay_ns = cxt->als_delay_ns;
+               cxt->rgbw_latency_ns = cxt->als_latency_ns;
+               #else
+               cxt->rgbw_delay_ns = delay_ns;
+               cxt->rgbw_latency_ns = latency_ns;
+               #endif
 #if defined(CONFIG_NANOHUB) && defined(CONFIG_MTK_ALSPSHUB)
 		if (cxt->als_ctl.is_support_batch)
 			err = cxt->als_ctl.rgbw_batch(0, cxt->rgbw_delay_ns,

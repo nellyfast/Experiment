@@ -30,6 +30,7 @@
 #include <mt-plat/sync_write.h>
 #include "adsp_ipi.h"
 #include "adsp_helper.h"
+#include "adsp_service.h"
 
 #define ADSP_TIMER_TIMEOUT          (1 * HZ) /* 1 seconds */
 #define ROUNDUP(a, b)               (((a) + ((b)-1)) & ~((b)-1))
@@ -642,8 +643,6 @@ static void adsp_A_logger_init_handler(int id, void *data, unsigned int len)
 	unsigned long flags;
 	struct adsp_log_info_s *log_info = (struct adsp_log_info_s *)data;
 
-	pr_debug("[ADSP]adsp_get_reserve_mem_phys=%llx\n",
-		 adsp_get_reserve_mem_phys(ADSP_A_LOGGER_MEM_ID));
 	spin_lock_irqsave(&adsp_A_log_buf_spinlock, flags);
 	/* sync adsp last log information*/
 	adsp_A_log_dram_addr_last = log_info->adsp_log_dram_addr;
@@ -697,11 +696,15 @@ static void adsp_logger_notify_ws(struct work_struct *ws)
 	unsigned int adsp_core_id = sws->id;
 	enum adsp_ipi_status ret;
 	enum adsp_ipi_id adsp_ipi_id;
-	unsigned int mem_info[4];
+	unsigned int mem_info[6];
+	u64 memaddr;
 
 	adsp_ipi_id = ADSP_IPI_LOGGER_INIT_A;
 
 	pr_debug("[ADSP]%s id=%u\n", __func__, adsp_ipi_id);
+	memaddr = adsp_get_reserve_mem_virt(ADSP_A_CORE_DUMP_MEM_ID);
+	memset((void *)memaddr, 0,
+			adsp_get_reserve_mem_size(ADSP_A_CORE_DUMP_MEM_ID));
 	/*
 	 *send ipi to invoke adsp logger
 	 */
@@ -713,10 +716,16 @@ static void adsp_logger_notify_ws(struct work_struct *ws)
 	mem_info[1] = adsp_get_reserve_mem_size(ADSP_A_LOGGER_MEM_ID);
 	mem_info[2] = adsp_get_reserve_mem_phys(ADSP_A_CORE_DUMP_MEM_ID);
 	mem_info[3] = adsp_get_reserve_mem_size(ADSP_A_CORE_DUMP_MEM_ID);
+	mem_info[4] = adsp_get_reserve_mem_phys(ADSP_A_DEBUG_DUMP_MEM_ID);
+	mem_info[5] = adsp_get_reserve_mem_size(ADSP_A_DEBUG_DUMP_MEM_ID);
 	pr_info("[ADSP] logger addr 0x%x, size 0x%x\n",
 			mem_info[0], mem_info[1]);
 	pr_info("[ADSP] coredump addr 0x%x, size 0x%x\n",
 			mem_info[2], mem_info[3]);
+	pr_info("[ADSP] debugdump addr 0x%x, size 0x%x\n",
+			mem_info[4], mem_info[5]);
+
+	adsp_register_feature(ADSP_LOGGER_FEATURE_ID);
 
 	do {
 		ret = adsp_ipi_send(adsp_ipi_id, (void *)mem_info,
@@ -727,6 +736,8 @@ static void adsp_logger_notify_ws(struct work_struct *ws)
 		retrytimes--;
 		udelay(2000);
 	} while (retrytimes > 0);
+
+	adsp_deregister_feature(ADSP_LOGGER_FEATURE_ID);
 
 	if (ret != ADSP_IPI_DONE)
 		pr_err("[ADSP]logger initial fail, ipi ret=%d\n", ret);
@@ -757,6 +768,9 @@ static void adsp_trax_init_ws(struct work_struct *ws)
 		reserved_phys_trax, sizeof(reserved_phys_trax));
 	phys_u32 = (unsigned int)reserved_phys_trax;
 	pr_info("[ADSP]phys_u32=0x%x, size=%lu\n", phys_u32, sizeof(phys_u32));
+
+	adsp_register_feature(ADSP_LOGGER_FEATURE_ID);
+
 	do {
 		ret = adsp_ipi_send(adsp_ipi_id, (void *)&phys_u32,
 			sizeof(phys_u32), 0, adsp_core_id);
@@ -766,6 +780,8 @@ static void adsp_trax_init_ws(struct work_struct *ws)
 		retrytimes--;
 		udelay(2000);
 	} while (retrytimes > 0);
+
+	adsp_deregister_feature(ADSP_LOGGER_FEATURE_ID);
 
 	pADSP_A_trax_ctl->initiated = 1;
 }
@@ -847,6 +863,26 @@ error:
 
 }
 
+int dump_adsp_partial_log(void *buf, size_t size)
+{
+	unsigned int w_pos = 0, offset = 0, len = 0;
+	void *src = ((char *) ADSP_A_log_ctl) + ADSP_A_log_ctl->buff_ofs;
+
+	w_pos = ADSP_A_buf_info->w_pos;
+
+	if (w_pos >= size) {
+		offset = w_pos - size;
+		memcpy(buf, src + offset, size);
+	} else {
+		len = size - w_pos;
+		offset = dram_buf_len - len;
+		memcpy(buf, src + offset, len);
+		memcpy(buf + len, src, w_pos);
+	}
+
+	return size;
+}
+
 #if ADSP_TRAX
 int adsp_trax_init(void)
 {
@@ -864,39 +900,16 @@ int adsp_trax_init(void)
 }
 #endif
 
-const struct file_operations adsp_A_log_file_ops = {
+const struct file_operations adsp_A_drv_file_ops = {
 	.owner = THIS_MODULE,
 	.read = adsp_A_log_if_read,
 	.open = adsp_A_log_if_open,
 	.poll = adsp_A_log_if_poll,
-};
-
-
-/*
- * get log from adsp and optionally save it
- * NOTE: this function may be blocked
- * @param adsp_core_id:  fill adsp id to get last log
- */
-void adsp_get_log(enum adsp_core_id adsp_id)
-{
-	pr_debug("[ADSP] %s\n", __func__);
-#if 0 /* no need for hifi3 using dram */
-	adsp_A_get_last_log(ADSP_AED_STR_LEN - 200);
+	.unlocked_ioctl = adsp_driver_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = adsp_driver_compat_ioctl,
 #endif
-}
-
-/*
- * return adsp last log
- */
-char *adsp_get_last_log(enum adsp_core_id id)
-{
-	char *last_log = NULL;
-
-	if (id == ADSP_A_ID)
-		last_log = adsp_A_last_log;
-
-	return last_log;
-}
+};
 
 #if ADSP_TRAX
 int adsp_get_trax_initiated(void)

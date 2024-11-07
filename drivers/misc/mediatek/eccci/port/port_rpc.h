@@ -56,6 +56,7 @@ typedef enum {
 	IPC_RPC_CCCI_LHIF_MAPPING = 0x400D,
 	IPC_RPC_DTSI_QUERY_OP = 0x400E,
 	IPC_RPC_QUERY_AP_SYS_PROPERTY = 0x400F,
+	IPC_RPC_SAR_TABLE_IDX_QUERY_OP = 0x4010,
 
 	IPC_RPC_IT_OP = 0x4321,
 } RPC_OP_ID;
@@ -258,7 +259,4 @@ extern int IMM_GetOneChannelValue(int dwChannel, int data[4], int *rawdata);
 extern bool is_clk_buf_from_pmic(void);
 extern void clk_buf_get_rf_drv_curr(void *rf_drv_curr);
 extern void clk_buf_save_afc_val(unsigned int afcdac);
-#ifdef CONFIG_PINCTRL_MTK_NO_UPSTREAM
-extern int gpio_get_tristate_input(unsigned int pin);
-#endif
 #endif	/* __PORT_RPC_H__ */

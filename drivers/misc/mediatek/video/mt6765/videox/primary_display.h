@@ -322,6 +322,14 @@ int primary_display_set_frame_buffer_address(unsigned long va,
 unsigned long primary_display_get_frame_buffer_mva_address(void);
 unsigned long primary_display_get_frame_buffer_va_address(void);
 int primary_display_suspend(void);
+#ifdef ODM_WT_EDIT
+int primary_display_shutdown(void);
+#endif
+
+#ifdef ODM_WT_EDIT
+//Zhenzhen.Wu@ODM_WT.MM.Display.Lcd, 2020/2/23, add for multi-lcms
+int _ioctl_get_lcm_module_info(unsigned long arg);
+#endif
 int primary_display_resume(void);
 int primary_display_ipoh_restore(void);
 int primary_display_get_width(void);
@@ -424,6 +432,15 @@ int do_primary_display_switch_mode(int sess_mode, unsigned int session,
 int primary_display_check_test(void);
 void _primary_path_switch_dst_lock(void);
 void _primary_path_switch_dst_unlock(void);
+
+#ifdef VENDOR_EDIT
+/*
+* Ling.Guo@PSW.MM.Display.LCD.Machine, 2018/02/27,
+* add for face fill light node
+*/
+void ffl_set_init(void);
+void ffl_set_enable(unsigned int enable);
+#endif /* VENDOR_EDIT */
 
 /* AOD */
 enum lcm_power_state primary_display_set_power_state(

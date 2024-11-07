@@ -216,8 +216,6 @@ static void fsm_routine_exception(struct ccci_fsm_ctl *ctl,
 			msleep(EVENT_POLL_INTEVAL);
 		}
 		fsm_md_exception_stage(&ctl->ee_ctl, 2);
-		/*wait until modem memory dump done*/
-		fsm_check_ee_done(&ctl->ee_ctl, EE_DONE_TIMEOUT);
 		break;
 	default:
 		break;
@@ -699,6 +697,7 @@ int ccci_fsm_init(int md_id)
 	fsm_poller_init(&ctl->poller_ctl);
 	fsm_ee_init(&ctl->ee_ctl);
 	fsm_monitor_init(&ctl->monitor_ctl);
+	fsm_sys_init();
 
 	ccci_fsm_entries[md_id] = ctl;
 	return 0;

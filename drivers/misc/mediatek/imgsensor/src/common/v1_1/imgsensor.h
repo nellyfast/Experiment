@@ -40,6 +40,10 @@ struct IMGSENSOR {
 	struct IMGSENSOR_SENSOR_LIST *psensor_list[MAX_NUM_OF_SUPPORT_SENSOR];
 
 	atomic_t imgsensor_open_cnt;
+	enum IMGSENSOR_RETURN (*mclk_set_drive_current)
+		(void *pinstance,
+		enum IMGSENSOR_SENSOR_IDX sensor_idx,
+		enum ISP_DRIVING_CURRENT_ENUM drive_current);
 };
 
 MINT32
@@ -73,6 +77,10 @@ imgsensor_sensor_control(
 		enum MSDK_SCENARIO_ID_ENUM ScenarioId);
 
 extern struct IMGSENSOR_HW_CFG imgsensor_custom_config[];
+#ifdef VENDOR_EDIT
+/* Henry.Chang@Camera.Driver add for 19301 special mipi switch 20190521 */
+extern struct IMGSENSOR_HW_CFG imgsensor_custom_config_19301[];
+#endif
 
 #endif
 

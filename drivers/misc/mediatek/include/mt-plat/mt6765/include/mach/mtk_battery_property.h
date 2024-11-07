@@ -19,10 +19,15 @@
 #define MTK_CHR_EXIST 1
 #define KEEP_100_PERCENT 1
 #define R_FG_VALUE	10				/* mOhm */
-#define EMBEDDED_SEL 0
+#define EMBEDDED_SEL 1
 #define PMIC_SHUTDOWN_CURRENT 20	/* 0.01 mA */
 #define FG_METER_RESISTANCE	75
+#ifdef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basin 2018.12.18 modify CAR TUNE VALUE*/
+#define CAR_TUNE_VALUE	98 /*1.00 */
+#else /*ODM_HQ_EDIT*/
 #define CAR_TUNE_VALUE	100 /*1.00 */
+#endif /*ODM_HQ_EDIT*/
 #define NO_BAT_TEMP_COMPENSATE 0
 /* NO_BAT_TEMP_COMPENSATE 1 = don't need bat_temper compensate, */
 /* but fg_meter_resistance still use for SWOCV */
@@ -58,6 +63,7 @@
 
 #define D0_SEL 0	/* not implement */
 #define AGING_SEL 0	/* not implement */
+#define DLPT_UI_REMAP_EN 0
 
 /* ADC resistor  */
 #define R_BAT_SENSE	4
@@ -81,7 +87,12 @@
 #define DIFF_BAT_TEMP_SETTING 1
 #define DIFF_BAT_TEMP_SETTING_C 10
 #define DISCHARGE_TRACKING_TIME 10
+#ifndef ODM_HQ_EDIT
+/* zhouyi  PSW.BSP.CHG  2019-12-13  mtk fg pursue to full 1% every 10s */
 #define CHARGE_TRACKING_TIME 60
+#else
+#define CHARGE_TRACKING_TIME 10
+#endif
 #define DIFFERENCE_FULLOCV_VTH	1000	/* 0.1mV */
 #define CHARGE_PSEUDO_FULL_LEVEL 8000
 #define FULL_TRACKING_BAT_INT2_MULTIPLY 6
@@ -99,8 +110,14 @@
 #define CALI_CAR_TUNE_AVG_NUM	60
 
 /* Aging Compensation 1*/
+#ifndef ODM_HQ_EDIT
+/*Hanxing.Duan@ODM.HQ.BSP.CHG.Basic 2019.10.21 add bq check_charging_enable function*/
 #define AGING_FACTOR_MIN 10
 #define AGING_FACTOR_DIFF 90
+#else /*ODM_HQ_EDIT*/
+#define AGING_FACTOR_MIN 85
+#define AGING_FACTOR_DIFF 10
+#endif /*ODM_HQ_EDIT*/
 #define DIFFERENCE_VOLTAGE_UPDATE 50
 #define AGING_ONE_EN 1
 #define AGING1_UPDATE_SOC 30
@@ -150,7 +167,12 @@
 #define NAFG_RESISTANCE 1500
 
 #define PMIC_SHUTDOWN_SW_EN 1
+#ifdef ODM_HQ_EDIT
+/*WT000695@ODM.BSP.Charger 2019.12.30 modify gauge alg*/
 #define FORCE_VC_MODE 0	/* 0: mix, 1:Coulomb, 2:voltage */
+#else
+#define FORCE_VC_MODE 1
+#endif
 
 #define LOADING_1_EN 0
 #define LOADING_2_EN 2
@@ -184,7 +206,13 @@
 
 #define BATTERY_TMP_TO_DISABLE_GM30 -50
 #define BATTERY_TMP_TO_DISABLE_NAFG -35
+
+#ifndef VENDOR_EDIT
+/* Yichun.Chen  PSW.BSP.CHG  2018-12-24  add for charge */
 #define DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG 25
+#else
+#define DEFAULT_BATTERY_TMP_WHEN_DISABLE_NAFG -30
+#endif
 #define BATTERY_TMP_TO_ENABLE_NAFG -20
 /* #define GM30_DISABLE_NAFG */
 

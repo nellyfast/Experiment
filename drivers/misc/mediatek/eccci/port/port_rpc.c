@@ -71,9 +71,7 @@ static struct gpio_item gpio_mapping_table[] = {
 
 static int get_md_gpio_val(unsigned int num)
 {
-#ifdef CONFIG_PINCTRL_MTK_NO_UPSTREAM
-	return gpio_get_tristate_input(num);
-#elif defined CONFIG_PINCTRL_MTK
+#ifdef CONFIG_PINCTRL_MTK
 	return __gpio_get_value(num);
 #else
 	return -1;
@@ -1373,6 +1371,7 @@ int port_rpc_recv_match(struct port_t *port, struct sk_buff *skb)
 			break;
 
 		case IPC_RPC_QUERY_AP_SYS_PROPERTY:
+		case IPC_RPC_SAR_TABLE_IDX_QUERY_OP:
 			is_userspace_msg = 1;
 			break;
 		default:

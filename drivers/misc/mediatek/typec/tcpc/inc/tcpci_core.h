@@ -47,7 +47,12 @@
 #define DPM_DBG_ENABLE		0
 #define PD_ERR_ENABLE		1
 #define PE_DBG_ENABLE		0
+#ifdef VENDOR_EDIT
+/* Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/01/01, sjc Modify for charging debug */
+#define TYPEC_DBG_ENABLE	1
+#else
 #define TYPEC_DBG_ENABLE	0
+#endif
 
 
 #define DP_INFO_ENABLE		1
@@ -154,8 +159,13 @@ struct tcpc_desc {
 #define TCPC_FLAGS_LPM_WAKEUP_WATCHDOG		(1<<3)
 #define TCPC_FLAGS_CHECK_RA_DETACHE		(1<<4)
 #define TCPC_FLAGS_PREFER_LEGACY2		(1<<5)
+#define TCPC_FLAGS_DISABLE_LEGACY		(1<<6)
 
 #define TCPC_FLAGS_PD_REV30			(1<<7)
+
+#define TCPC_FLAGS_WATCHDOG_EN			(1<<8)
+#define TCPC_FLAGS_WATER_DETECTION		(1<<9)
+#define TCPC_FLAGS_CABLE_TYPE_DETECTION		(1<<10)
 
 enum tcpc_cc_pull {
 	TYPEC_CC_RA = 0,
@@ -209,14 +219,8 @@ struct tcpc_ops {
 
 #ifdef CONFIG_WATER_DETECTION
 	int (*is_water_detected)(struct tcpc_device *tcpc);
-	int (*enable_wd_oneshot)(struct tcpc_device *tcpc);
 	int (*set_water_protection)(struct tcpc_device *tcpc, bool en);
 #endif /* CONFIG_WATER_DETECTION */
-
-#ifdef CONFIG_FOREIGN_OBJECT_DETECTION
-	int (*enable_fod_oneshot)(struct tcpc_device *tcpc, bool en);
-	int (*set_cc_hidet)(struct tcpc_device *tcpc, bool en);
-#endif /* CONFIG_FOREIGN_OBJECT_DETECTION */
 
 #ifdef CONFIG_TCPC_LOW_POWER_MODE
 	int (*is_low_power_mode)(struct tcpc_device *tcpc);
@@ -227,9 +231,7 @@ struct tcpc_ops {
 	int (*set_idle_mode)(struct tcpc_device *tcpc, bool en);
 #endif /* CONFIG_TCPC_IDLE_MODE */
 
-#ifdef CONFIG_TCPC_WATCHDOG_EN
 	int (*set_watchdog)(struct tcpc_device *tcpc, bool en);
-#endif /* CONFIG_TCPC_WATCHDOG_EN */
 
 #ifdef CONFIG_TCPC_INTRST_EN
 	int (*set_intrst)(struct tcpc_device *tcpc, bool en);
@@ -401,7 +403,7 @@ struct tcpc_device {
 	bool tcpc_source_vconn;
 #endif	/* CONFIG_TCPC_SOURCE_VCONN */
 
-	uint8_t tcpc_flags;
+	uint32_t tcpc_flags;
 
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
 	struct dual_role_phy_instance *dr_usb;
@@ -483,14 +485,17 @@ struct tcpc_device {
 	bool vbus_present;
 	u8 irq_enabled:1;
 	u8 pd_inited_flag:1; /* MTK Only */
+
+	/* TypeC Shield Protection */
 #ifdef CONFIG_WATER_DETECTION
-	u32 wd_retry_cnt;
+#ifdef VENDOR_EDIT
+/* Jianchao.Shi@BSP.CHG.Basic, 2019/04/15, sjc Add for do not enable polling when in WD */
+	bool wd_already;
+#endif
+	int usbid_calib;
 #endif /* CONFIG_WATER_DETECTION */
-#ifdef CONFIG_FOREIGN_OBJECT_DETECTION
-	enum tcpc_fod_status fod;
-#endif /* CONFIG_FOREIGN_OBJECT_DETECTION */
 #ifdef CONFIG_CABLE_TYPE_DETECTION
-	enum tcpc_cable_type cable_type;
+	enum tcpc_cable_type typec_cable_type;
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
 };
 

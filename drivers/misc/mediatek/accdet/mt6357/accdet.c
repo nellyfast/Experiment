@@ -25,6 +25,11 @@
 #include "reg_accdet.h"
 #include <mach/upmu_hw.h>
 
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+#include <linux/switch.h>
+#endif /* ODM_HQ_EDIT */
+
 #define REGISTER_VAL(x)	(x - 1)
 
 /* for accdet_read_audio_res, less than 5k ohm, return -1 , otherwise ret 0 */
@@ -36,6 +41,7 @@
 #define EINT_PIN_PLUG_OUT       (0)
 #define EINT_PIN_MOISTURE_DETECED (2)
 #define ANALOG_FASTDISCHARGE_SUPPORT
+extern void __attribute__((weak)) switch_headset_state(int headset_state);
 
 #ifdef CONFIG_ACCDET_EINT_IRQ
 enum pmic_eint_ID {
@@ -133,7 +139,6 @@ static int accdet_auxadc_offset;
 static struct wakeup_source *accdet_irq_lock;
 static struct wakeup_source *accdet_timer_lock;
 static DEFINE_MUTEX(accdet_eint_irq_sync_mutex);
-static int s_button_status;
 
 static u32 accdet_eint_type = IRQ_TYPE_LEVEL_LOW;
 static u32 button_press_debounce = 0x400;
@@ -163,6 +168,11 @@ static int moisture_int_r = 47000;
 static int moisture_ext_r = 470000;
 #endif
 #endif
+
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+static struct switch_dev accdet_data;
+#endif  /* ODM_HQ_EDIT */
 
 static bool debug_thread_en;
 static bool dump_reg;
@@ -731,6 +741,11 @@ static void send_accdet_status_event(u32 cable_type, u32 status)
 		input_sync(accdet_input_dev);
 		pr_info("%s HEADPHONE(3-pole) %s\n", __func__,
 			status ? "PlugIn" : "PlugOut");
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+		switch_set_state(&accdet_data, status==0 ? NO_DEVICE_STATE : HEADSET_NO_MIC_STATE);
+			switch_headset_state(status);
+#endif  /* ODM_HQ_EDIT */
 		break;
 	case HEADSET_MIC:
 		/* when plug 4-pole out, 3-pole plug out should also be
@@ -744,6 +759,11 @@ static void send_accdet_status_event(u32 cable_type, u32 status)
 		input_sync(accdet_input_dev);
 		pr_info("%s MICROPHONE(4-pole) %s\n", __func__,
 			status ? "PlugIn" : "PlugOut");
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+		switch_set_state(&accdet_data, status==0 ? NO_DEVICE_STATE : HEADSET_MIC_STATE);
+			switch_headset_state(status);
+#endif  /* ODM_HQ_EDIT */
 		break;
 	case LINE_OUT_DEVICE:
 		input_report_switch(accdet_input_dev, SW_LINEOUT_INSERT,
@@ -751,6 +771,11 @@ static void send_accdet_status_event(u32 cable_type, u32 status)
 		input_sync(accdet_input_dev);
 		pr_info("%s LineOut %s\n", __func__,
 			status ? "PlugIn" : "PlugOut");
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+		switch_set_state(&accdet_data, status==0 ? NO_DEVICE_STATE : LINE_OUT_DEVICE_STATE);
+			switch_headset_state(status);
+#endif  /* ODM_HQ_EDIT */
 		break;
 	default:
 		pr_info("%s Invalid cableType\n", __func__);
@@ -1101,7 +1126,6 @@ static inline void check_cable_type(void)
 	pr_notice("accdet %s(), cur_status:%s current AB = %d\n", __func__,
 		     accdet_status_str[accdet_status], cur_AB);
 
-	s_button_status = 0;
 	pre_status = accdet_status;
 
 	switch (accdet_status) {
@@ -1165,7 +1189,6 @@ static inline void check_cable_type(void)
 				cust_pwm_deb->debounce0);
 			mutex_lock(&accdet_eint_irq_sync_mutex);
 			if (eint_accdet_sync_flag) {
-				s_button_status = 1;
 				accdet_status = HOOK_SWITCH;
 				multi_key_detection(cur_AB);
 			} else
@@ -1906,6 +1929,18 @@ int mt_accdet_probe(struct platform_device *dev)
 
 	pr_info("%s() begin!\n", __func__);
 
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+	accdet_data.name = "h2w";
+	accdet_data.index = 0;
+	accdet_data.state = 0;
+	ret = switch_dev_register(&accdet_data);
+	if (ret) {
+		pr_notice("%s switch_dev_register fail:%d!\n", __func__,ret);
+		return -1;
+	}
+#endif  /* ODM_HQ_EDIT */
+
 	/* register char device number, Create normal device for auido use */
 	ret = alloc_chrdev_region(&accdet_devno, 0, 1, ACCDET_DEVNAME);
 	if (ret) {
@@ -2079,6 +2114,10 @@ err_class_create:
 err_cdev_add:
 	unregister_chrdev_region(accdet_devno, 1);
 err_chrdevregion:
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+	switch_dev_unregister(&accdet_data);
+#endif  /* ODM_HQ_EDIT */
 	pr_notice("%s error. now exit.!\n", __func__);
 	return ret;
 }
@@ -2097,23 +2136,10 @@ void mt_accdet_remove(void)
 	class_destroy(accdet_class);
 	cdev_del(accdet_cdev);
 	unregister_chrdev_region(accdet_devno, 1);
+//xuyechen@ODM_HQ.Multimedia.audio, 2019/09/24, add for switch node for headset status in mmi test
+#ifdef ODM_HQ_EDIT
+	switch_dev_unregister(&accdet_data);
+#endif  /* ODM_HQ_EDIT */
 	pr_debug("%s done!\n", __func__);
-}
-
-long mt_accdet_unlocked_ioctl(struct file *file, unsigned int cmd,
-	unsigned long arg)
-{
-	switch (cmd) {
-	case ACCDET_INIT:
-		break;
-	case SET_CALL_STATE:
-		break;
-	case GET_BUTTON_STATUS:
-		return s_button_status;
-	default:
-		pr_debug("[Accdet]accdet_ioctl : default\n");
-		break;
-	}
-	return 0;
 }
 
