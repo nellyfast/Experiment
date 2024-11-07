@@ -1396,7 +1396,10 @@ errout:
 		if (inode->i_nlink)
 			ext4_orphan_del(NULL, inode);
 	}
-
+#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
+	ext4_update_time(EXT4_SB(inode->i_sb));
+#endif
 	return ret ? ret : copied;
 }
 
@@ -1513,7 +1516,10 @@ errout:
 		if (inode->i_nlink)
 			ext4_orphan_del(NULL, inode);
 	}
-
+#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
+	ext4_update_time(EXT4_SB(inode->i_sb));
+#endif
 	return ret ? ret : copied;
 }
 
@@ -3839,7 +3845,10 @@ static int __ext4_block_zero_page_range(handle_t *handle,
 
 	if (!buffer_uptodate(bh)) {
 		err = -EIO;
-		ll_rw_block(REQ_OP_READ, 0, 1, &bh);
+		if (fscrypt_is_hw_encrypt(inode))
+			ll_rw_block_crypt(inode, REQ_OP_READ, 0, 1, &bh);
+		else
+			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
 		wait_on_buffer(bh);
 		/* Uhhuh. Read error. Complain and punt. */
 		if (!buffer_uptodate(bh))

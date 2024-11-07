@@ -168,6 +168,8 @@ extern int pid_delete_dentry(const struct dentry *);
 extern int proc_pid_readdir(struct file *, struct dir_context *);
 extern struct dentry *proc_pid_lookup(struct inode *, struct dentry *, unsigned int);
 extern loff_t mem_lseek(struct file *, loff_t, int);
+extern unsigned long uclamp_tg_min(struct task_struct *task);
+extern unsigned long uclamp_ts_min(struct task_struct *task);
 
 /* Lookups */
 typedef int instantiate_t(struct inode *, struct dentry *,
@@ -212,7 +214,7 @@ extern const struct inode_operations proc_pid_link_inode_operations;
 
 extern void proc_init_inodecache(void);
 extern struct inode *proc_get_inode(struct super_block *, struct proc_dir_entry *);
-extern int proc_fill_super(struct super_block *, void *data, int flags);
+extern int proc_fill_super(struct super_block *);
 extern void proc_entry_rundown(struct proc_dir_entry *);
 
 /*
@@ -277,7 +279,6 @@ static inline void proc_tty_init(void) {}
  * root.c
  */
 extern struct proc_dir_entry proc_root;
-extern int proc_parse_options(char *options, struct pid_namespace *pid);
 
 extern void proc_self_init(void);
 extern int proc_remount(struct super_block *, int *, char *);
@@ -313,3 +314,9 @@ extern unsigned long task_statm(struct mm_struct *,
 				unsigned long *, unsigned long *,
 				unsigned long *, unsigned long *);
 extern void task_mem(struct seq_file *, struct mm_struct *);
+
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM)
+/* Kui.Zhang@PSW.BSP.Kernel.Performance, 2018-11-07,
+ * add new file node for process reclaim */
+extern const struct file_operations proc_reclaim_operations;
+#endif
