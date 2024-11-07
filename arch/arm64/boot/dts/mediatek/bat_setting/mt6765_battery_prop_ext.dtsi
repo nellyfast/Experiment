@@ -38,10 +38,12 @@ bat_gm30: battery{
 	TEMPERATURE_T3 = <(0)>;	/*	Battery temperature T3*/
 	TEMPERATURE_T4 = <(-10)>;	/*	Battery temperature T4*/
 	g_FG_PSEUDO100_T0 = <(100)>;	/*	Pseudo 100% percentage at T0.*/
-	g_FG_PSEUDO100_T1 = <(100)>;	/*	Pseudo 100% percentage at T1.*/
-	g_FG_PSEUDO100_T2 = <(100)>;	/*	Pseudo 100% percentage at T2.*/
-	g_FG_PSEUDO100_T3 = <(100)>;	/*	Pseudo 100% percentage at T3.*/
-	g_FG_PSEUDO100_T4 = <(100)>;	/*	Pseudo 100% percentage at T4.*/
+	g_FG_PSEUDO100_T1 = <(95)>;	/*	Pseudo 100% percentage at T1.*/
+	g_FG_PSEUDO100_T2 = <(92)>;	/*	Pseudo 100% percentage at T2.*/
+	g_FG_PSEUDO100_T3 = <(92)>;	/*	Pseudo 100% percentage at T3.*/
+	g_FG_PSEUDO100_T4 = <(90)>;	/*	Pseudo 100% percentage at T4.*/
+	ACTIVE_TABLE = <(0)>;
+	MULTI_BATTERY = <(0)>;
 	/*	System shut down voltage.*/
 	Q_MAX_SYS_VOLTAGE_BAT0 = <(3350)>;
 	/*	System shut down voltage.*/
@@ -50,5 +52,6 @@ bat_gm30: battery{
 	Q_MAX_SYS_VOLTAGE_BAT2 = <(3350)>;
 	/*	System shut down voltage.*/
 	Q_MAX_SYS_VOLTAGE_BAT3 = <(3350)>;
-#include "mt6765_battery_table_ext.dtsi"
+#include "mt6765_battery_table_ext_atl.dtsi"
+#include "mt6765_battery_table_ext_sdi.dtsi"
 };
