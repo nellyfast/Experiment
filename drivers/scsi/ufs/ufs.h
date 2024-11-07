@@ -202,6 +202,19 @@ enum ufs_desc_def_size {
 	QUERY_DESC_HEALTH_MAX_SIZE		= 0x25, /* MTK PATCH */
 };
 
+#ifdef VENDOR_EDIT
+//xiaofan.yang@PSW.TECH.Stability, 2019/03/15,Add for check storage endurance
+/* Health descriptor parameters offsets in bytes*/
+enum health_desc_param {
+       HEALTH_DESC_PARAM_LEN                   = 0x0,
+       HEALTH_DESC_PARAM_TYPE                  = 0x1,
+       HEALTH_DESC_PARAM_EOL_INFO              = 0x2,
+       HEALTH_DESC_PARAM_LIFE_TIME_EST_A       = 0x3,
+       HEALTH_DESC_PARAM_LIFE_TIME_EST_B       = 0x4,
+       //HEALTH_DESC_PARAM_VENDOR_PROPINFO	   = 0x5,
+};
+#endif
+
 /* MTK PATCH: Read Geometry Descriptor for RPMB initialization */
 enum geometry_desc_param_offset {
 	GEOMETRY_DESC_LEN		= 0x0,
@@ -561,11 +574,21 @@ struct ufs_vreg {
 	int max_uA;
 };
 
+enum ufs_vreg_state {
+	UFS_REG_HBA_INIT,
+	UFS_REG_HBA_EXIT,
+	UFS_REG_SUSPEND_SET_LPM,
+	UFS_REG_SUSPEND_SET_HPM,
+	UFS_REG_RESUME_SET_LPM,
+	UFS_REG_RESUME_SET_HPM,
+};
+
 struct ufs_vreg_info {
 	struct ufs_vreg *vcc;
 	struct ufs_vreg *vccq;
 	struct ufs_vreg *vccq2;
 	struct ufs_vreg *vdd_hba;
+	enum ufs_vreg_state state;
 };
 
 struct ufs_dev_info {
@@ -575,6 +598,8 @@ struct ufs_dev_info {
 };
 
 #define MAX_MODEL_LEN 16
+#define MAX_PRL_LEN   5
+
 /**
  * ufs_dev_desc - ufs device details from the device descriptor
  *
@@ -584,6 +609,7 @@ struct ufs_dev_info {
 struct ufs_dev_desc {
 	u16 wmanufacturerid;
 	char model[MAX_MODEL_LEN + 1];
+	char prl[MAX_PRL_LEN + 1];
 };
 
 #endif /* End of Header */
