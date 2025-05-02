@@ -1082,16 +1082,16 @@ static void tp_fw_update_work(struct work_struct *work)
                     strlcat(fw_name_fae, postfix, MAX_FW_NAME_LENGTH);
                     strlcat(fw_name_fae, p_node, MAX_FW_NAME_LENGTH);
                     TPD_INFO("fw_name_fae is %s\n", fw_name_fae);
-                    ret = request_firmware(request_firmware(&fw, fw_name_fae, ts->dev)fw, OPPO_FW_DIR fw_name_fae, ts->dev);
+                    ret = request_firmware(request_firmware(request_firmware(&fw, fw_name_fae, ts->dev)fw, OPPO_FW_DIR fw_name_fae, ts->dev)fw, OPPO_FW_DIR fw_name_fae, ts->dev);
                     if (!ret)
                         break;
                 } else {
-                    ret = request_firmware(request_firmware(&fw, ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
+                    ret = request_firmware(request_firmware(request_firmware(&fw, ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
                     if (!ret)
                         break;
                 }
             } else {
-                ret = request_firmware_select(request_firmware_select(&fw, ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
+                ret = request_firmware_select(request_firmware_select(request_firmware_select(&fw, ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
                 if (!ret)
                     break;
             }
