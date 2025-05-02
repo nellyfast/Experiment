@@ -1070,6 +1070,13 @@ static void tp_fw_update_work(struct work_struct *work)
                     fw_name_fae = kzalloc(MAX_FW_NAME_LENGTH, GFP_KERNEL);
                     if(fw_name_fae == NULL) {
                         TPD_INFO("fw_name_fae kzalloc error!\n");
+    ret = request_firmware(&fw, OPPO_FW_DIR fw_name_fae, ts->dev);
+    if (ret)
+        ret = request_firmware(&fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
+    if (ret)
+        ret = request_firmware_select(&fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
+    if (ret)
+        break;
                         goto EXIT;
                     }
                     p_node  = strstr(ts->panel_data.fw_name, ".");
@@ -1082,16 +1089,20 @@ static void tp_fw_update_work(struct work_struct *work)
                     strlcat(fw_name_fae, postfix, MAX_FW_NAME_LENGTH);
                     strlcat(fw_name_fae, p_node, MAX_FW_NAME_LENGTH);
                     TPD_INFO("fw_name_fae is %s\n", fw_name_fae);
-                    ret = request_firmware(request_firmware(request_firmware(&fw, fw_name_fae, ts->dev)fw, OPPO_FW_DIR fw_name_fae, ts->dev)fw, OPPO_FW_DIR fw_name_fae, ts->dev);
+    ret = request_firmware(&fw, OPPO_FW_DIR fw_name_fae, ts->dev);
+    if (ret)
+        ret = request_firmware(&fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
+    if (ret)
+        ret = request_firmware_select(&fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
+    if (ret)
+        break;
                     if (!ret)
                         break;
                 } else {
-                    ret = request_firmware(request_firmware(request_firmware(&fw, ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
                     if (!ret)
                         break;
                 }
             } else {
-                ret = request_firmware_select(request_firmware_select(request_firmware_select(&fw, ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev)fw, OPPO_FW_DIR ts->panel_data.fw_name, ts->dev);
                 if (!ret)
                     break;
             }
@@ -1126,7 +1137,6 @@ static void tp_fw_update_work(struct work_struct *work)
     }
 
     if (ts->ts_ops->bootup_test && ts->health_monitor_support) {
-        ret = request_firmware(&fw, ts->panel_data.test_limit_name, ts->dev);
         if (ret < 0) {
             TPD_INFO("Request firmware failed - %s (%d)\n", ts->panel_data.test_limit_name, ret);
         } else {
