@@ -601,42 +601,17 @@
 
 /* AUDIO GPIO standardization */
 &audgpio {
-pinctrl-names = "aud_clk_mosi_off",
-                "aud_clk_mosi_on",
-                "aud_clk_miso_off",
-                "aud_clk_miso_on",
-                "aud_dat_mosi_off",
-                "aud_dat_mosi_on",
-                "aud_dat_miso_off",
-                "aud_dat_miso_on",
+	pinctrl-names = "aud_clk_mosi_off",
+			"aud_clk_mosi_on",
+			"aud_clk_miso_off",
+			"aud_clk_miso_on",
+			"aud_dat_mosi_off",
+			"aud_dat_mosi_on",
+			"aud_dat_miso_off",
+			"aud_dat_miso_on",
 /* zhangmengchun@ODM.Muiltimedia.audio  2018/11/28 modify for bring up audio */
-                "extamp-pulllow",
-                "extamp-pullhigh",
-                "aud_dat_miso2_off",
-                "aud_dat_miso2_on",
-                "aud_dat_mosi2_off",
-                "aud_dat_mosi2_on",
-                "vow_dat_miso_off",
-                "vow_dat_miso_on",
-                "vow_clk_miso_off",
-                "vow_clk_miso_on",
-                "aud_smartpa_reset",
-                "aud_smartpa_on",
-                "aud_smartpa_off",
-                "aud_tdm_mode0",
-                "aud_tdm_mode1",
-                "audpmicclk-mode0",
-                "audpmicclk-mode1",
-                "audi2s1-mode0",
-                "audi2s1-mode1",
-                "extamp2-pullhigh",
-                "extamp2-pulllow",
-                "rcvspk-pullhigh",
-                "rcvspk-pulllow",
-                "hpdepop-pullhigh",
-                "hpdepop-pulllow",
-                "aud_clk_mosi_pull_high",
-                "aud_clk_mosi_pull_low";
+			"extamp-pulllow",
+			"extamp-pullhigh";
 	pinctrl-0 = <&aud_clk_mosi_off>;
 	pinctrl-1 = <&aud_clk_mosi_on>;
 	pinctrl-2 = <&aud_clk_miso_off>;
@@ -648,31 +623,6 @@ pinctrl-names = "aud_clk_mosi_off",
 /* zhangmengchun@ODM.Muiltimedia.audio  2018/11/28 modify for bring up audio */
 	pinctrl-8 = <&aud_pins_extamp_pulllow>;
 	pinctrl-9 = <&aud_pins_extamp_pullhigh>;
-    pinctrl-10 = <&aud_dat_miso2_off>;
-    pinctrl-11 = <&aud_dat_miso2_on>;
-    pinctrl-12 = <&aud_dat_mosi2_off>;
-    pinctrl-13 = <&aud_dat_mosi2_on>;
-    pinctrl-14 = <&vow_dat_miso_off>;
-    pinctrl-15 = <&vow_dat_miso_on>;
-    pinctrl-16 = <&vow_clk_miso_off>;
-    pinctrl-17 = <&vow_clk_miso_on>;
-    pinctrl-18 = <&aud_smartpa_reset>;
-    pinctrl-19 = <&aud_smartpa_on>;
-    pinctrl-20 = <&aud_smartpa_off>;
-    pinctrl-21 = <&aud_tdm_mode0>;
-    pinctrl-22 = <&aud_tdm_mode1>;
-    pinctrl-23 = <&audpmicclk_mode0>;
-    pinctrl-24 = <&audpmicclk_mode1>;
-    pinctrl-25 = <&audi2s1_mode0>;
-    pinctrl-26 = <&audi2s1_mode1>;
-    pinctrl-27 = <&extamp2_pullhigh>;
-    pinctrl-28 = <&extamp2_pulllow>;
-    pinctrl-29 = <&rcvspk_pullhigh>;
-    pinctrl-30 = <&rcvspk_pulllow>;
-    pinctrl-31 = <&hpdepop_pullhigh>;
-    pinctrl-32 = <&hpdepop_pulllow>;
-    pinctrl-33 = <&aud_clk_mosi_pull_high>;
-    pinctrl-34 = <&aud_clk_mosi_pull_low>;
 	status = "okay";
 	gpio_audio_pa_ctrl = <&pio 159 0>;
 };
@@ -766,231 +716,6 @@ pinctrl-names = "aud_clk_mosi_off",
 			output-high;
 		};
 	};
-	
-	aud_dat_miso2_off: aud_dat_miso2_off {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO60__FUNC_GPIO60>;
-        input-enable;
-        bias-pull-down;
-        slew-rate = <1>;
-    };
-};
-
-aud_dat_miso2_on: aud_dat_miso2_on {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO60__FUNC_GPIO60>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_dat_mosi2_off: aud_dat_mosi2_off {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO61__FUNC_GPIO61>;
-        input-enable;
-        bias-pull-down;
-        slew-rate = <1>;
-    };
-};
-
-aud_dat_mosi2_on: aud_dat_mosi2_on {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO61__FUNC_GPIO61>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-vow_dat_miso_off: vow_dat_miso_off {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO62__FUNC_GPIO62>;
-        input-enable;
-        bias-pull-down;
-        slew-rate = <1>;
-    };
-};
-
-vow_dat_miso_on: vow_dat_miso_on {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO62__FUNC_GPIO62>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-vow_clk_miso_off: vow_clk_miso_off {
-    pins_cmd0.clk {
-        pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
-        input-enable;
-        bias-pull-down;
-        slew-rate = <1>;
-    };
-};
-
-vow_clk_miso_on: vow_clk_miso_on {
-    pins_cmd0.clk {
-        pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_smartpa_reset: aud_smartpa_reset {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO64__FUNC_GPIO64>;
-        output-low;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_smartpa_on: aud_smartpa_on {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO64__FUNC_GPIO64>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_smartpa_off: aud_smartpa_off {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO64__FUNC_GPIO64>;
-        output-low;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_tdm_mode0: aud_tdm_mode0 {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO65__FUNC_GPIO65>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_tdm_mode1: aud_tdm_mode1 {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO65__FUNC_GPIO65>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-audpmicclk_mode0: audpmicclk-mode0 {
-    pins_cmd0.clk {
-        pinmux = <PINMUX_GPIO66__FUNC_GPIO66>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-audpmicclk_mode1: audpmicclk-mode1 {
-    pins_cmd0.clk {
-        pinmux = <PINMUX_GPIO66__FUNC_GPIO66>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-audi2s1_mode0: audi2s1-mode0 {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO67__FUNC_GPIO67>;
-        input-enable;
-        bias-pull-down;
-        slew-rate = <1>;
-    };
-};
-
-audi2s1_mode1: audi2s1-mode1 {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO67__FUNC_GPIO67>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-extamp2_pullhigh: extamp2-pullhigh {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO68__FUNC_GPIO68>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-extamp2_pulllow: extamp2-pulllow {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO68__FUNC_GPIO68>;
-        output-low;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-rcvspk_pullhigh: rcvspk-pullhigh {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO69__FUNC_GPIO69>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-rcvspk_pulllow: rcvspk-pulllow {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO69__FUNC_GPIO69>;
-        output-low;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-hpdepop_pullhigh: hpdepop-pullhigh {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO70__FUNC_GPIO70>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-hpdepop_pulllow: hpdepop-pulllow {
-    pins_cmd0_dat {
-        pinmux = <PINMUX_GPIO70__FUNC_GPIO70>;
-        output-low;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_clk_mosi_pull_high: aud_clk_mosi_pull_high {
-    pins_cmd0.clk {
-        pinmux = <PINMUX_GPIO71__FUNC_GPIO71>;
-        output-high;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
-
-aud_clk_mosi_pull_low: aud_clk_mosi_pull_low {
-    pins_cmd0.clk {
-        pinmux = <PINMUX_GPIO71__FUNC_GPIO71>;
-        output-low;
-        bias-disable;
-        slew-rate = <1>;
-    };
-};
 
 };
 /* AUDIO end */
